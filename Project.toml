@@ -1,7 +1,14 @@
 name = "EnergyCommunities"
 uuid = "22e6e995-a406-4503-9007-55f69a3ec865"
-authors = ["Natapon Wanapinit <natapon.wanapinit@ise.fraunhofer.de> and contributors"]
+authors = ["Natapon Wanapinit"]
 version = "1.0.0-DEV"
+
+[deps]
+DBInterface = "a10d1c49-ce27-4219-8d33-6db1a4562965"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
+JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
+SQLite = "0aa819cd-b072-5ff4-a722-6bc24af294d9"
 
 [compat]
 julia = "1.9"
