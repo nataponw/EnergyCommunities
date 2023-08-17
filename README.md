@@ -1,3 +1,8 @@
 # EnergyCommunities
 
-[![Build Status](https://github.com/Natapon Wanapinit/EnergyCommunities.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/Natapon Wanapinit/EnergyCommunities.jl/actions/workflows/CI.yml?query=branch%3Amaster)
+## Wishlist
+- CO2 emission
+    - Probably, emission factors need to be commonly declare...
+    - How can one deal with the allocation of emissions where there is an internal trade?
+
+

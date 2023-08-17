@@ -6,10 +6,10 @@ import DataFrames
 import HDF5, SQLite, DBInterface
 
 # Export lists ================================================================
-# Custom structs
+# Set structs
 export Year, Peer, Tec
 # Functions related to the extraction and processing of parameters
-export createblankdatabase, extractDBTable, processParameterSingleAgent, processParameters, gp
+export createblankdatabase, processParameters
 # Functions related to the initialization of an optimization problem
 export initializeModel
 # JuMP object conversion functions
@@ -20,13 +20,14 @@ export saveResults, loadResults
 export analyzeContribution, analyzeCostallocation
 
 # Custom structs ==============================================================
-include("SetStructs.jl")
+include(joinpath(@__DIR__, "SetStructs.jl"))
 
 # Constants ===================================================================
 const bigM = 100.0
 const sTec = Tec.(sort(["pv", "wt", "es", "gb", "hb", "hp", "dh", "ts", "chpng", "chph2"]))
 const hours_in_year = 8760
 const hours_in_day = 24.0
+const emissionfactor = Dict{Tuple{String, Year}, Float64}()
 
 # Parameter extraction ========================================================
 """
@@ -61,42 +62,6 @@ function createblankdatabase(sY_int::Vector{Int}, nTS::Int; dbname="blank.db")
         command = replace(insert_template, '!' => iY)
         DBInterface.execute(db, command)
     end
-end
-
-"""
-    extractDBTable(db, tableName::String)
-
-Extract a table `tableName` from a DB connection `db` as a DataFrame
-"""
-function extractDBTable(db, tableName::String)
-    df = DataFrames.DataFrame(DBInterface.execute(db, "SELECT * FROM ($tableName)"))
-    return df
-end
-
-"""
-    processParameterSinglePeer(dbpath::String, sY::Vector{Year}, sTS::Vector{Int})
-
-Extract and filter parameter tables from `dbpath` for individual peers
-"""
-function processParameterSinglePeer(dbpath::String, sY::Vector{Year}, sTS::Vector{Int})
-    db = SQLite.DB(dbpath)
-    # Agent id
-    agentid = extractDBTable(db, "id")
-    # Scalar parameter [...]
-    pSca = extractDBTable(db, "pSca")
-    # Parameter [sY]
-    pY = extractDBTable(db, "pY")
-    filter!(:year => ∈(sY), pY)
-    # Parameter [sTec]
-    pTec = extractDBTable(db, "pTec")
-    filter!(:tec => ∈(sTec), pTec)
-    # Parameter [sY, sTec]
-    pYTec = extractDBTable(db, "pYTec")
-    filter!([:year, :tec] => (y, t) -> (y ∈ sY) & (t ∈ sTec), pYTec)
-    # Parameter [sY-sTS]
-    pYTS = extractDBTable(db, "pYTS")
-    filter!([:year, :timestep] => (y, ts) -> (y ∈ sY) & (ts ∈ sTS), pYTS)
-    return (; agentid, pSca, pY, pTec, pYTec, pYTS)
 end
 
 """
@@ -138,23 +103,6 @@ function processParameters(dbPaths::Vector{String}, sY::Vector{Year}, sDay::Vect
     # Peer set
     sPeer = Peer.(agentid.agentid)
     return (; sTS, sTec, sPeer, agentid, pSca, pY, pTec, pYTec, pYTS)
-end
-
-"""
-Select a scalar parameter value from a DataFrame
-"""
-function gp(df::DataFrames.DataFrame, selcol::Symbol, filter::Vector)
-    index = collect(1:size(df)[1])
-    for i in 1:length(filter)
-        if !ismissing(filter[i])
-            intersect!(index, findall(df[:, i] .== filter[i]))
-        end
-    end
-    if isempty(index)
-        return missing
-    else
-        return df[index, selcol][1]
-    end
 end
 
 # Model initialization ========================================================
@@ -703,7 +651,7 @@ end
 Load all saved results from an HDF5 into a dictionary
 
 # Keyword Arguments
-- `objlist` : List of objects to be loaded
+- `objlist` : List of objects to be loaded. By default, all objects are loaded.
 
 See also : [`saveResults`](@ref)
 """
@@ -734,105 +682,64 @@ function loadResults(filename::String; objlist::Vector{String}=String[])
     return results
 end
 
-# Analytics ===================================================================
+# Analyse the cost allocation =================================================
+include(joinpath(@__DIR__, "CostAllocation.jl"))
+
+# Internal functions ==========================================================
+
 """
-(Pending update) Analyze the contribution of respective peers via the Shapley Value method
+    extractDBTable(db, tableName::String)
+
+Extract a table `tableName` from a DB connection `db` as a DataFrame
 """
-function analyzeContribution(sPeer, sY, sTS, sTec, pSca, pY, pTec, pYTec, pYTS, dT, selSolver)
-    nPeer = length(sPeer)
-    # Create a mapping between (coalition) id and sExcludedPeer
-    map_id_sExcludedPeer = Dict{Int, Vector{Peer}}((2^nPeer-1) => Peer[])
-    map_id_selection = Dict{Int, Vector{Int}}((2^nPeer-1) => ones(nPeer))
-    for id ∈ 0:(2^nPeer-2)
-        selection = reverse(digits(id, base=2, pad=nPeer))
-        excludedPeers = sPeer[findall(x -> x == 0, selection)]
-        map_id_selection[id] = selection
-        map_id_sExcludedPeer[id] = excludedPeers
-    end
-    # Calculate the total cost of different coalition
-    map_id_objvalue = Dict{Int, Float64}()
-    for id ∈ 0:(2^nPeer-1)
-        if sum(map_id_selection[id]) == 1
-            map_id_objvalue[id] = map_id_objvalue[0]
-        end
-        m = initializeModel(
-            sPeer, sY, sTS, sTec, pSca, pY, pTec, pYTec, pYTS, dT,
-            bNoExpand=true, bIntTrade=true, sExcludedPeer=map_id_sExcludedPeer[id]
-        )
-        JuMP.set_optimizer(m, selSolver)
-        JuMP.optimize!(m)
-        map_id_objvalue[id] = JuMP.objective_value(m)
-    end
-    # Derive the values to the coalition
-    map_id_coalvalue = Dict(0 => 0.0)
-    [map_id_coalvalue[id] = (map_id_objvalue[0] - map_id_objvalue[id]) for id ∈ 1:(2^nPeer-1)];
-    converter = reverse([2^x for x ∈ 0:(nPeer-1)])
-    # Calculate the contribution according to the SV analysis
-    map_peer_contribution = Dict{Peer, Float64}()
-    for iPeer ∈ sPeer
-        contribution = 0.0
-        for id ∈ 0:(2^nPeer - 2)
-            # Skip this coalition if iPeer ∈ selection
-            if iPeer ∉ map_id_sExcludedPeer[id]
-                continue
-            end
-            nS = sum(map_id_selection[id])
-            selection_with_iPeer = map_id_selection[id] .+ Int.([x == iPeer for x ∈ sPeer])
-            id_with_iPeer = sum(selection_with_iPeer .* converter)
-            contribution += factorial(nS)*factorial(nPeer - nS - 1)/factorial(nPeer) * (map_id_coalvalue[id_with_iPeer] - map_id_coalvalue[id])
-        end
-        map_peer_contribution[iPeer] = contribution
-    end
-    return map_peer_contribution
+function extractDBTable(db, tableName::String)
+    df = DataFrames.DataFrame(DBInterface.execute(db, "SELECT * FROM ($tableName)"))
+    return df
 end
 
 """
-(Pending update) Analyze the cost allocation based on individual contributions and on the market equilibrium prices
+    processParameterSinglePeer(dbpath::String, sY::Vector{Year}, sTS::Vector{Int})
+
+Extract and filter parameter tables from `dbpath` for individual peers
 """
-function analyzeCostallocation(m_cooperate, m_separate, contribution, dT)
-    # Extract the indexes
-    sPeer = m_cooperate[:cXC_inttrade].axes[1]
-    sY = m_cooperate[:cXC_inttrade].axes[2]
-    nPeer = length(sPeer); nY = length(sY)
-    # Analyze the cooperative cost allocation
-    costComponents = [:cXC_inttrade, :cXC_exttrade, :cCAPEX, :cDec_scap, :cElas]
-    costs_separate = DataFrames.DataFrame(:peer => sPeer)
-    costs_cooperate = DataFrames.DataFrame(:peer => sPeer)
-    for cc ∈ costComponents
-        DataFrames.insertcols!(costs_separate, cc => sum(JuMP.value.(m_separate[cc]).data, dims=2)[:])
-        DataFrames.insertcols!(costs_cooperate, cc => sum(JuMP.value.(m_cooperate[cc]).data, dims=2)[:])
-    end
-    DataFrames.select!(costs_separate, :peer, DataFrames.AsTable(DataFrames.Not(:peer)) => sum => :tc_separate)
-    DataFrames.select!(costs_cooperate, :peer, DataFrames.AsTable(DataFrames.Not(:peer)) => sum => :tc_cooperate)
-    costalloc = DataFrames.outerjoin(costs_separate, costs_cooperate, on = :peer)
-    costalloc = DataFrames.outerjoin(
-            costalloc,
-            DataFrames.DataFrame(:peer => sPeer, :contribution => [contribution[iPeer] for iPeer ∈ sPeer]),
-        on = :peer)
-    costalloc.tc_fairdist = costalloc.tc_separate - costalloc.contribution
-    costalloc.payment_fairdist = costalloc.tc_fairdist - costalloc.tc_cooperate
-    # Analze the market-based cost allocation
-    mkprice_el = JuMP.dual.(m_cooperate[:ecBalac_market_el]).data
-    inttrade_elImp = JuMP.value.(m_cooperate[:vXCac_inttrade_elImp]).data
-    inttrade_elExp = JuMP.value.(m_cooperate[:vXCac_inttrade_elExp]).data
-    mkprice_th = JuMP.dual.(m_cooperate[:ecBalac_market_th]).data
-    inttrade_thImp = JuMP.value.(m_cooperate[:vXCac_inttrade_thImp]).data
-    inttrade_thExp = JuMP.value.(m_cooperate[:vXCac_inttrade_thExp]).data
-    payment_mkTrans_el = zeros(nPeer, nY)
-    payment_mkTrans_th = zeros(nPeer, nY)
-    for iPeer ∈ 1:nPeer, iY ∈ 1:nY
-        payment_mkTrans_el[iPeer, iY] += dT * sum(mkprice_el[iY, :] .* inttrade_elImp[iPeer, iY, :])
-        payment_mkTrans_el[iPeer, iY] -= dT * sum(mkprice_el[iY, :] .* inttrade_elExp[iPeer, iY, :])
-        payment_mkTrans_th[iPeer, iY] += dT * sum(mkprice_th[iY, :] .* inttrade_thImp[iPeer, iY, :])
-        payment_mkTrans_th[iPeer, iY] -= dT * sum(mkprice_th[iY, :] .* inttrade_thExp[iPeer, iY, :])
-    end
-    DataFrames.insertcols!(costalloc, :payment_elmk => sum(payment_mkTrans_el, dims=2)[:])
-    DataFrames.insertcols!(costalloc, :payment_thmk => sum(payment_mkTrans_th, dims=2)[:])
-    DataFrames.transform!(costalloc, DataFrames.AsTable([:tc_cooperate, :payment_elmk, :payment_thmk]) => sum => :tc_mkbased)
-    return costalloc
+function processParameterSinglePeer(dbpath::String, sY::Vector{Year}, sTS::Vector{Int})
+    db = SQLite.DB(dbpath)
+    # Agent id
+    agentid = extractDBTable(db, "id")
+    # Scalar parameter [...]
+    pSca = extractDBTable(db, "pSca")
+    # Parameter [sY]
+    pY = extractDBTable(db, "pY")
+    filter!(:year => ∈(sY), pY)
+    # Parameter [sTec]
+    pTec = extractDBTable(db, "pTec")
+    filter!(:tec => ∈(sTec), pTec)
+    # Parameter [sY, sTec]
+    pYTec = extractDBTable(db, "pYTec")
+    filter!([:year, :tec] => (y, t) -> (y ∈ sY) & (t ∈ sTec), pYTec)
+    # Parameter [sY-sTS]
+    pYTS = extractDBTable(db, "pYTS")
+    filter!([:year, :timestep] => (y, ts) -> (y ∈ sY) & (ts ∈ sTS), pYTS)
+    return (; agentid, pSca, pY, pTec, pYTec, pYTS)
 end
 
-# Internal functions that are not exported ====================================
+"""
+Select a scalar parameter value from a DataFrame
+"""
+function gp(df::DataFrames.DataFrame, selcol::Symbol, filter::Vector)
+    index = collect(1:size(df)[1])
+    for i in 1:length(filter)
+        if !ismissing(filter[i])
+            intersect!(index, findall(df[:, i] .== filter[i]))
+        end
+    end
+    if isempty(index)
+        return missing
+    else
+        return df[index, selcol][1]
+    end
+end
+
 """
     convert_denseaxisarray2dataframe(obj::JuMP.Containers.DenseAxisArray)
 
@@ -849,6 +756,7 @@ function convert_denseaxisarray2dataframe(obj::JuMP.Containers.DenseAxisArray)
     df.value = permutedims(JuMP.value.(obj).data, reverse(1:ndims))[:]
     return df
 end
+
 """
     listdimdenseaxisarray(obj)
 
