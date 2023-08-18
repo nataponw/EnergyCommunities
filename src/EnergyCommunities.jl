@@ -485,11 +485,11 @@ function initializeModel(
             ) for iTec ∈ sTec
         ) * (nTS/timesteps_in_year) # Reduce annual lump sum costs by the considered time horizon
     )
-    par_deccost = DenseAxisArray(reshape(pTec.deccost, nPeer, nTec), sPeer, sTec)
+    par_cost_dec = DenseAxisArray(reshape(pTec.cost_dec, nPeer, nTec), sPeer, sTec)
     JuMP.@expression(m, cDec_scap[iPeer ∈ sPeer, iY ∈ sY],
         + sum(
             (
-                + zDec_scap[iPeer, iY, iTec] * par_deccost[iPeer, iTec]
+                + zDec_scap[iPeer, iY, iTec] * par_cost_dec[iPeer, iTec]
             ) for iTec ∈ sTec
         ) * (nTS/timesteps_in_year) # Reduce annual lump sum costs by the considered time horizon
     )
