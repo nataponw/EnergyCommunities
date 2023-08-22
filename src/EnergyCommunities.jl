@@ -435,12 +435,12 @@ function initializeModel(
         JuMP.@expression(m, cXC_comm[iY ∈ sY], 0.0)
         JuMP.@expression(m, cXC_inttrade[iPeer ∈ sPeer, iY ∈ sY],
             # Electricity trade among peers
-            + gp(pSca, :value, [iPeer.value, :inttrade_fee_el]) * dT * (
+            + gp(pSca, :value, [iPeer.value, "inttrade_fee_el"]) * dT * (
                 + sum(vXCac_inttrade_elImp[iPeer, iY, :])
                 + sum(vXCac_inttrade_elExp[iPeer, iY, :])
             )
             # Thermal energy trade among peers
-            + gp(pSca, :value, [iPeer.value, :inttrade_fee_th]) * dT * (
+            + gp(pSca, :value, [iPeer.value, "inttrade_fee_th"]) * dT * (
                 + sum(vXCac_inttrade_thImp[iPeer, iY, :])
                 + sum(vXCac_inttrade_thExp[iPeer, iY, :])
             )
@@ -530,8 +530,8 @@ function initializeModel(
         )
         par_dem_th_hh_total = dT .* DenseAxisArray(sum(reshape(pYTS.dem_th_hh, nPeer, nY, nTS), dims=3)[:, :, 1], sPeer, sY)
         JuMP.@expression(m, cElas[iPeer ∈ sPeer, iY ∈ sY],
-            + gp(pSca, :value, [iPeer.value, :thCur_baseprice]) * (vDem_thCur_rate[iPeer, iY] * par_dem_th_hh_total[iPeer, iY])
-            + gp(pSca, :value, [iPeer.value, :thCur_incrementprice])/2.0 * (vDem_thCur_rate[iPeer, iY] * par_dem_th_hh_total[iPeer, iY])^2.0
+            + gp(pSca, :value, [iPeer.value, "thCur_baseprice"]) * (vDem_thCur_rate[iPeer, iY] * par_dem_th_hh_total[iPeer, iY])
+            + gp(pSca, :value, [iPeer.value, "thCur_incrementprice"])/2.0 * (vDem_thCur_rate[iPeer, iY] * par_dem_th_hh_total[iPeer, iY])^2.0
         )
     else
         JuMP.fix.(vDem_thCur, 0.0, force=true)

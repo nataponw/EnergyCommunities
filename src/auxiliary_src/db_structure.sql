@@ -16,13 +16,13 @@ CREATE TABLE pSca (
         parameter
     )
 );
-INSERT INTO pSca VALUES ('thCur_baseprice', -1.0);
-INSERT INTO pSca VALUES ('thCur_incrementprice', -1.0);
-INSERT INTO pSca VALUES ('thCur_max', -1.0);
-INSERT INTO pSca VALUES ('inttrade_fee_el', -1.0);
-INSERT INTO pSca VALUES ('inttrade_fee_th', -1.0);
-INSERT INTO pSca VALUES ('flexev_share', -1.0);
-INSERT INTO pSca VALUES ('flexev_duration', -1.0);
+INSERT INTO pSca VALUES ('thCur_baseprice', 0.0);
+INSERT INTO pSca VALUES ('thCur_incrementprice', 0.0);
+INSERT INTO pSca VALUES ('thCur_max', 0.0);
+INSERT INTO pSca VALUES ('inttrade_fee_el', 0.0);
+INSERT INTO pSca VALUES ('inttrade_fee_th', 0.0);
+INSERT INTO pSca VALUES ('flexev_share', 0.0);
+INSERT INTO pSca VALUES ('flexev_duration', 0.0);
 
 CREATE TABLE pY (
     year        INTEGER,
@@ -55,7 +55,7 @@ CREATE TABLE pTec (
     scap_finalpaymentyear INTEGER   DEFAULT 9999,
     cost_dec               REAL      DEFAULT 0.0,
     ncap_loanduration     INTEGER   DEFAULT 0,
-    ncap_loaninterest     REAL      DEFAULT 0.0,
+    ncap_loaninterest     REAL      DEFAULT 0.0001,
     ncap_lifetime         INTEGER   DEFAULT 0,
     PRIMARY KEY (
         tec
