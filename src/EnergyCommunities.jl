@@ -786,6 +786,8 @@ function reconstruct_denseaxisarray(values, dims, sPeer, sY, sTS, sTec)
         obj = DenseAxisArray(values, sPeer, sY, sTS)
     elseif dims == ["sPeer", "sY"]
         obj = DenseAxisArray(values, sPeer, sY)
+    elseif dims == ["sPeer", "sTec"]
+        obj = DenseAxisArray(values, sPeer, sTec)
     elseif dims == ["sY", "sTS"]
         obj = DenseAxisArray(values, sY, sTS)
     elseif dims == ["sY"]
