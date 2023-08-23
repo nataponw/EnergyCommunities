@@ -448,17 +448,17 @@ function initializeModel(
         JuMP.@expression(m, cXC_exttrade[iPeer ∈ sPeer, iY ∈ sY],
             # Electricity trade with the utility
             + gp(pY, :impprice_el, [iPeer.value, iY.value]) * dT * sum(vXCac_exttrade_elImp[iPeer, iY, :])
-            + gp(pY, :expprice_el, [iPeer.value, iY.value]) * dT * sum(vXCac_exttrade_elExp[iPeer, iY, :])
+            - gp(pY, :expprice_el, [iPeer.value, iY.value]) * dT * sum(vXCac_exttrade_elExp[iPeer, iY, :])
             # Thermal energy trade with the utility
             + gp(pY, :impprice_th, [iPeer.value, iY.value]) * dT * sum(vXCac_exttrade_thImp[iPeer, iY, :])
-            + gp(pY, :expprice_th, [iPeer.value, iY.value]) * dT * sum(vXCac_exttrade_thExp[iPeer, iY, :])
+            - gp(pY, :expprice_th, [iPeer.value, iY.value]) * dT * sum(vXCac_exttrade_thExp[iPeer, iY, :])
             # Natural gas import from the utility
             + gp(pY, :impprice_ng, [iPeer.value, iY.value]) * dT * (
-                + sum(vCon_gb_ng[iPeer, iY, :])
+                + sum(vCon_gb_ng[iPeer, iY, :]) + sum(vCon_chpng_ng[iPeer, iY, :])
             )
             # Hydrogen import from the utility
             + gp(pY, :impprice_h2, [iPeer.value, iY.value]) * dT * (
-                + sum(vCon_hb_h2[iPeer, iY, :])
+                + sum(vCon_hb_h2[iPeer, iY, :]) + sum(vCon_chph2_h2[iPeer, iY, :])
             )
         )
     else
