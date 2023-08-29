@@ -153,6 +153,9 @@ function initializeModel(
     JuMP.@expression(m, sY, sY)
     JuMP.@expression(m, sTS, sTS)
     JuMP.@expression(m, sTec, sTec)
+    JuMP.@expression(m, dem_el_hh[sPeer, sY, sTS], reshape(pYTS.dem_el_hh, nPeer, nY, nTS))
+    JuMP.@expression(m, dem_el_ev[sPeer, sY, sTS], reshape(pYTS.dem_el_ev, nPeer, nY, nTS))
+    JuMP.@expression(m, dem_th_hh[sPeer, sY, sTS], reshape(pYTS.dem_th_hh, nPeer, nY, nTS))
     # Energy exchange variables ---------------------------------------------------
     ## Agent
     JuMP.@variable(m, 0.0 ≤ vXCph_peer_elImp[sPeer, sY, sTS])
