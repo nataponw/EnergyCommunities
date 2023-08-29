@@ -615,7 +615,6 @@ function saveResults(m::JuMP.Model, filename::String; bSaveConstraintDual::Bool=
     !bSaveConstraintDual && setdiff!(allObjects, allConstraintRef)
     # Process objects
     for obj ∈ allObjects
-        println(obj)
         gid = HDF5.create_group(fid, string(obj))
         if obj in allConstraintRef
             HDF5.write_dataset(gid, "value", JuMP.dual.(m[obj]).data)
