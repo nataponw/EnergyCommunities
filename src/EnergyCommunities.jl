@@ -148,14 +148,11 @@ function initializeModel(
         (r, n) -> r ./ (1 .- (1 .+ r).^(-n))
     ) => :ncap_annuityrate)
     # Essential constants and sets permanently mapped to the model ----------------
-    JuMP.@expression(m, dT, dT)
-    JuMP.@expression(m, sPeer, sPeer)
-    JuMP.@expression(m, sY, sY)
-    JuMP.@expression(m, sTS, sTS)
-    JuMP.@expression(m, sTec, sTec)
-    JuMP.@expression(m, dem_el_hh[sPeer, sY, sTS], reshape(pYTS.dem_el_hh, nPeer, nY, nTS))
-    JuMP.@expression(m, dem_el_ev[sPeer, sY, sTS], reshape(pYTS.dem_el_ev, nPeer, nY, nTS))
-    JuMP.@expression(m, dem_th_hh[sPeer, sY, sTS], reshape(pYTS.dem_th_hh, nPeer, nY, nTS))
+    m[:dT] = dT
+    m[:sPeer] = sPeer; m[:sY] = sY; m[:sTS] = sTS; m[:sTec] = sTec
+    m[:dem_el_hh] = JuMP.Containers.DenseAxisArray(reshape(pYTS.dem_el_hh, nPeer, nY, nTS), sPeer, sY, sTS)
+    m[:dem_el_ev] = JuMP.Containers.DenseAxisArray(reshape(pYTS.dem_el_ev, nPeer, nY, nTS), sPeer, sY, sTS)
+    m[:dem_th_hh] = JuMP.Containers.DenseAxisArray(reshape(pYTS.dem_th_hh, nPeer, nY, nTS), sPeer, sY, sTS)
     # Energy exchange variables ---------------------------------------------------
     ## Agent
     JuMP.@variable(m, 0.0 ≤ vXCph_peer_elImp[sPeer, sY, sTS])
@@ -351,8 +348,8 @@ function initializeModel(
         .+ vXCph_peer_elImp .- vXCph_peer_elExp
         .+ vFS_source_el .- vFS_sink_el
         .==
-        .+ reshape(pYTS.dem_el_hh, nPeer, nY, nTS)
-        .+ reshape(pYTS.dem_el_ev, nPeer, nY, nTS) .+ vDem_evshift_increase
+        .+ m[:dem_el_hh]
+        .+ m[:dem_el_ev] .+ vDem_evshift_increase
         .- vOpt_pv_gen .- vOpt_wt_gen .- vOpt_chpng_gen_el .- vOpt_chph2_gen_el
         .+ vCon_hp_el
         .+ vOpt_es_ch .- vOpt_es_dch
@@ -369,7 +366,7 @@ function initializeModel(
         .+ vXCph_peer_thImp .- vXCph_peer_thExp
         .+ vFS_source_th .- vFS_sink_th
         .==
-        .+ reshape(pYTS.dem_th_hh, nPeer, nY, nTS) .- vDem_thCur
+        .+ m[:dem_th_hh] .- vDem_thCur
         .- vOpt_gb_gen .- vOpt_hb_gen .- vOpt_hp_gen .- vOpt_chpng_gen_th .- vOpt_chph2_gen_th
         .+ vOpt_ts_ch .- vOpt_ts_dch
     )
@@ -615,7 +612,7 @@ function saveResults(m::JuMP.Model, filename::String; bSaveConstraintDual::Bool=
     allVariableRef = [x for x ∈ keys(JuMP.object_dictionary(m)) if isa(m[x], AbstractArray{JuMP.VariableRef})]
     allAffExpr = [x for x ∈ keys(JuMP.object_dictionary(m)) if isa(m[x], AbstractArray{JuMP.AffExpr})]
     allQuadExpr = [x for x ∈ keys(JuMP.object_dictionary(m)) if isa(m[x], AbstractArray{JuMP.QuadExpr})]
-    if bSaveConstraintDual
+        if bSaveConstraintDual
         allConstraintRef = [x for x ∈ keys(JuMP.object_dictionary(m)) if ((string(x)[1:2]=="ec") | (string(x)[1:2]=="ic"))]
     else
         allConstraintRef = Symbol[]
