@@ -604,24 +604,23 @@ function saveResults(m::JuMP.Model, filename::String; bSaveConstraintDual::Bool=
     # Create or overwrite an existing file
     fid = HDF5.h5open(filename, "w")
     # Write sets
+    allSets = [:sPeer, :sY, :sTS, :sTec]
     HDF5.write_dataset(fid, "_index_sPeer", [iPeer.value for iPeer ∈ m[:sPeer]])
     HDF5.write_dataset(fid, "_index_sY", [iY.value for iY ∈ m[:sY]])
     HDF5.write_dataset(fid, "_index_sTS", m[:sTS])
     HDF5.write_dataset(fid, "_index_sTec", [iTec.value for iTec ∈ m[:sTec]])
     # List objects
-    allVariableRef = [x for x ∈ keys(JuMP.object_dictionary(m)) if isa(m[x], AbstractArray{JuMP.VariableRef})]
-    allAffExpr = [x for x ∈ keys(JuMP.object_dictionary(m)) if isa(m[x], AbstractArray{JuMP.AffExpr})]
-    allQuadExpr = [x for x ∈ keys(JuMP.object_dictionary(m)) if isa(m[x], AbstractArray{JuMP.QuadExpr})]
-        if bSaveConstraintDual
-        allConstraintRef = [x for x ∈ keys(JuMP.object_dictionary(m)) if ((string(x)[1:2]=="ec") | (string(x)[1:2]=="ic"))]
-    else
-        allConstraintRef = Symbol[]
-    end
+    allObjects = setdiff(keys(JuMP.object_dictionary(m)), allSets)
+    allConstraintRef = [x for x ∈ allObjects if ((string(x)[1:2]=="ec") | (string(x)[1:2]=="ic"))]
+    !bSaveConstraintDual && setdiff!(allObjects, allConstraintRef)
     # Process objects
-    for obj ∈ vcat(allVariableRef, allAffExpr, allQuadExpr, allConstraintRef)
+    for obj ∈ allObjects
+        println(obj)
         gid = HDF5.create_group(fid, string(obj))
         if obj in allConstraintRef
             HDF5.write_dataset(gid, "value", JuMP.dual.(m[obj]).data)
+        elseif typeof(m[obj]) <: Number
+            HDF5.write_dataset(gid, "value", m[obj])
         else
             HDF5.write_dataset(gid, "value", JuMP.value.(m[obj]).data)
         end
@@ -634,7 +633,7 @@ function saveResults(m::JuMP.Model, filename::String; bSaveConstraintDual::Bool=
         HDF5.close(gid)
     end
     # Write essential scalar values
-    exportScalar = Dict{String, Float64}("objvalue" => JuMP.objective_value(m), "dT" => m[:dT])
+    exportScalar = Dict{String, Float64}("objvalue" => JuMP.objective_value(m))
     for k ∈ keys(exportScalar)
         gid = HDF5.create_group(fid, k)
         HDF5.write_dataset(gid, "value", exportScalar[k])
