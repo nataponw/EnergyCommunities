@@ -1,96 +1,89 @@
 """
-(Pending update) Analyze the contribution of respective peers via the Shapley Value method
+    iterate_over_all_coalition(m)
+
+Given a model `m`, solve the problem over all possible coalition
 """
-function analyzeContribution(sPeer, sY, sTS, sTec, pSca, pY, pTec, pYTec, pYTS, dT, selSolver)
+function iterate_over_all_coalition(m)
+    # Prepare the list of coalition setup
+    sPeer = m[:sPeer]; sY = m[:sY]; sTS = m[:sTS]
     nPeer = length(sPeer)
-    # Create a mapping between (coalition) id and sExcludedPeer
-    map_id_sExcludedPeer = Dict{Int, Vector{Peer}}((2^nPeer-1) => Peer[])
-    map_id_selection = Dict{Int, Vector{Int}}((2^nPeer-1) => ones(nPeer))
-    for id ∈ 0:(2^nPeer-2)
-        selection = reverse(digits(id, base=2, pad=nPeer))
-        excludedPeers = sPeer[findall(x -> x == 0, selection)]
-        map_id_selection[id] = selection
-        map_id_sExcludedPeer[id] = excludedPeers
-    end
-    # Calculate the total cost of different coalition
-    map_id_objvalue = Dict{Int, Float64}()
+    dc_idx_sExcludedPeer = Dict{Int, Vector{Peer}}()
+    dc_idx_selection = Dict{Int, Vector{Int}}()
     for id ∈ 0:(2^nPeer-1)
-        if sum(map_id_selection[id]) == 1
-            map_id_objvalue[id] = map_id_objvalue[0]
-        end
-        m = initializeModel(
-            sPeer, sY, sTS, sTec, pSca, pY, pTec, pYTec, pYTS, dT,
-            bNoExpand=true, bIntTrade=true, sExcludedPeer=map_id_sExcludedPeer[id]
-        )
-        JuMP.set_optimizer(m, selSolver)
-        JuMP.optimize!(m)
-        map_id_objvalue[id] = JuMP.objective_value(m)
+        selection = digits(id, base=2, pad=nPeer)
+        excludedPeers = sPeer[findall(x -> x == 0, selection)]
+        dc_idx_selection[id] = selection
+        dc_idx_sExcludedPeer[id] = excludedPeers
     end
-    # Derive the values to the coalition
-    map_id_coalvalue = Dict(0 => 0.0)
-    [map_id_coalvalue[id] = (map_id_objvalue[0] - map_id_objvalue[id]) for id ∈ 1:(2^nPeer-1)];
-    converter = reverse([2^x for x ∈ 0:(nPeer-1)])
-    # Calculate the contribution according to the SV analysis
-    map_peer_contribution = Dict{Peer, Float64}()
-    for iPeer ∈ sPeer
-        contribution = 0.0
-        for id ∈ 0:(2^nPeer - 2)
-            # Skip this coalition if iPeer ∈ selection
-            if iPeer ∉ map_id_sExcludedPeer[id]
-                continue
+    # Iterate through each coalition
+    dc_idx_objvalue = Dict{Int, Float64}()
+    dc_idx_costs = Dict{Int, NamedTuple}()
+    for id ∈ 0:(2^nPeer-1)
+        if sum(dc_idx_selection[id]) == 1
+            dc_idx_objvalue[id] = dc_idx_objvalue[0]
+            dc_idx_costs[id] = dc_idx_costs[0]
+            continue
+        end
+        # Reverse existing peer exclusion
+        for iPeer ∈ sPeer, iY ∈ sY
+            if JuMP.is_fixed(m[:vXCac_inttrade_elImp][iPeer, iY, first(sTS)])
+                JuMP.unfix.(m[:vXCac_inttrade_elImp][iPeer, iY, sTS])
+                JuMP.unfix.(m[:vXCac_inttrade_elExp][iPeer, iY, sTS])
+                JuMP.unfix.(m[:vXCac_inttrade_thImp][iPeer, iY, sTS])
+                JuMP.unfix.(m[:vXCac_inttrade_thExp][iPeer, iY, sTS])
+                JuMP.set_lower_bound.(m[:vXCac_inttrade_elImp][iPeer, iY, sTS], 0.0)
+                JuMP.set_lower_bound.(m[:vXCac_inttrade_elExp][iPeer, iY, sTS], 0.0)
+                JuMP.set_lower_bound.(m[:vXCac_inttrade_thImp][iPeer, iY, sTS], 0.0)
+                JuMP.set_lower_bound.(m[:vXCac_inttrade_thExp][iPeer, iY, sTS], 0.0)
             end
-            nS = sum(map_id_selection[id])
-            selection_with_iPeer = map_id_selection[id] .+ Int.([x == iPeer for x ∈ sPeer])
-            id_with_iPeer = sum(selection_with_iPeer .* converter)
-            contribution += factorial(nS)*factorial(nPeer - nS - 1)/factorial(nPeer) * (map_id_coalvalue[id_with_iPeer] - map_id_coalvalue[id])
         end
-        map_peer_contribution[iPeer] = contribution
+        # Apply new peer exclusion
+        JuMP.fix.(m[:vXCac_inttrade_elImp][dc_idx_sExcludedPeer[id], sY, sTS], 0.0, force=true)
+        JuMP.fix.(m[:vXCac_inttrade_elExp][dc_idx_sExcludedPeer[id], sY, sTS], 0.0, force=true)
+        JuMP.fix.(m[:vXCac_inttrade_thImp][dc_idx_sExcludedPeer[id], sY, sTS], 0.0, force=true)
+        JuMP.fix.(m[:vXCac_inttrade_thExp][dc_idx_sExcludedPeer[id], sY, sTS], 0.0, force=true)
+        # Optimize the model with new peer exclusion
+        JuMP.optimize!(m)
+        dc_idx_objvalue[id] = JuMP.objective_value(m)
+        dc_idx_costs[id] = (
+            cXC_inttrade = JuMP.value.(m[:cXC_inttrade]),
+            cXC_exttrade = JuMP.value.(m[:cXC_exttrade]),
+            cCAPEX = JuMP.value.(m[:cCAPEX]),
+            cDec_scap = JuMP.value.(m[:cDec_scap]),
+            cElas = JuMP.value.(m[:cElas]),
+            cFS = JuMP.value.(m[:cFS]),
+        )
     end
-    return map_peer_contribution
+    return (; dc_idx_objvalue, dc_idx_costs)
 end
 
 """
-(Pending update) Analyze the cost allocation based on individual contributions and on the market equilibrium prices
+    calculate_chipin_coorperative(dc_idx_objvalue, dc_idx_costs, sPeer)
+
+Given the output of `iterate_over_all_coalition`, calculate the chipin based on coorperative contributions
 """
-function analyzeCostallocation(m_cooperate, m_separate, contribution, dT)
-    # Extract the indexes
-    sPeer = m_cooperate[:cXC_inttrade].axes[1]
-    sY = m_cooperate[:cXC_inttrade].axes[2]
-    nPeer = length(sPeer); nY = length(sY)
-    # Analyze the cooperative cost allocation
-    costComponents = [:cXC_inttrade, :cXC_exttrade, :cCAPEX, :cDec_scap, :cElas]
-    costs_separate = DataFrames.DataFrame(:peer => sPeer)
-    costs_cooperate = DataFrames.DataFrame(:peer => sPeer)
-    for cc ∈ costComponents
-        DataFrames.insertcols!(costs_separate, cc => sum(JuMP.value.(m_separate[cc]).data, dims=2)[:])
-        DataFrames.insertcols!(costs_cooperate, cc => sum(JuMP.value.(m_cooperate[cc]).data, dims=2)[:])
+function calculate_contribution_chipin(dc_idx_objvalue, dc_idx_costs, sPeer)
+    # Calculate the contribution
+    benefits = [dc_idx_objvalue[id] for id ∈ 0:(2^length(sPeer)-1)]
+    benefits = first(benefits) .- benefits
+    contribution = Dict(zip(sPeer, ESAAnalytics.shapleyvalueanalysis(benefits)))
+    # Calculate the ex post `chipin`
+    costs = DataFrames.DataFrame(
+        peer = String[],
+        tc_ext_nocoop = Float64[],
+        tc_ext_wicoop = Float64[],
+        contribution = Float64[]
+    )
+    idx_nocoop = 0; idx_wicoop = 2^length(sPeer)-1
+    for p ∈ sPeer
+        tc_ext_nocoop = 0.; tc_ext_wicoop = 0.
+        for costobj ∈ keys(dc_idx_costs[idx_nocoop])
+            tc_ext_nocoop += sum(dc_idx_costs[idx_nocoop][costobj][p, :])
+            tc_ext_wicoop += sum(dc_idx_costs[idx_wicoop][costobj][p, :])
+        end
+        push!(costs, (p.value, tc_ext_nocoop, tc_ext_wicoop, contribution[p]))
     end
-    DataFrames.select!(costs_separate, :peer, DataFrames.AsTable(DataFrames.Not(:peer)) => sum => :tc_separate)
-    DataFrames.select!(costs_cooperate, :peer, DataFrames.AsTable(DataFrames.Not(:peer)) => sum => :tc_cooperate)
-    costalloc = DataFrames.outerjoin(costs_separate, costs_cooperate, on = :peer)
-    costalloc = DataFrames.outerjoin(
-            costalloc,
-            DataFrames.DataFrame(:peer => sPeer, :contribution => [contribution[iPeer] for iPeer ∈ sPeer]),
-        on = :peer)
-    costalloc.tc_fairdist = costalloc.tc_separate - costalloc.contribution
-    costalloc.payment_fairdist = costalloc.tc_fairdist - costalloc.tc_cooperate
-    # Analze the market-based cost allocation
-    mkprice_el = JuMP.dual.(m_cooperate[:ecBalac_market_el]).data
-    inttrade_elImp = JuMP.value.(m_cooperate[:vXCac_inttrade_elImp]).data
-    inttrade_elExp = JuMP.value.(m_cooperate[:vXCac_inttrade_elExp]).data
-    mkprice_th = JuMP.dual.(m_cooperate[:ecBalac_market_th]).data
-    inttrade_thImp = JuMP.value.(m_cooperate[:vXCac_inttrade_thImp]).data
-    inttrade_thExp = JuMP.value.(m_cooperate[:vXCac_inttrade_thExp]).data
-    payment_mkTrans_el = zeros(nPeer, nY)
-    payment_mkTrans_th = zeros(nPeer, nY)
-    for iPeer ∈ 1:nPeer, iY ∈ 1:nY
-        payment_mkTrans_el[iPeer, iY] += dT * sum(mkprice_el[iY, :] .* inttrade_elImp[iPeer, iY, :])
-        payment_mkTrans_el[iPeer, iY] -= dT * sum(mkprice_el[iY, :] .* inttrade_elExp[iPeer, iY, :])
-        payment_mkTrans_th[iPeer, iY] += dT * sum(mkprice_th[iY, :] .* inttrade_thImp[iPeer, iY, :])
-        payment_mkTrans_th[iPeer, iY] -= dT * sum(mkprice_th[iY, :] .* inttrade_thExp[iPeer, iY, :])
-    end
-    DataFrames.insertcols!(costalloc, :payment_elmk => sum(payment_mkTrans_el, dims=2)[:])
-    DataFrames.insertcols!(costalloc, :payment_thmk => sum(payment_mkTrans_th, dims=2)[:])
-    DataFrames.transform!(costalloc, DataFrames.AsTable([:tc_cooperate, :payment_elmk, :payment_thmk]) => sum => :tc_mkbased)
-    return costalloc
+    DataFrames.transform!(costs, [:tc_ext_nocoop, :contribution] => (-) => :tc_expected)
+    DataFrames.transform!(costs, [:tc_expected, :tc_ext_wicoop] => (-) => :chipin)
+    return costs
 end

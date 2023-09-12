@@ -4,6 +4,7 @@ module EnergyCommunities
 import JuMP, JuMP.Containers.DenseAxisArray
 import DataFrames
 import HDF5, SQLite, DBInterface
+import ESAAnalytics
 
 # Export lists ================================================================
 # Set structs
@@ -17,7 +18,7 @@ export convert_modelobj2df
 # Export and import functions for solved problems
 export saveResults, loadResults
 # Analysis
-export analyzeContribution, analyzeCostallocation
+export iterate_over_all_coalition, calculate_contribution_chipin
 
 # Custom structs ==============================================================
 include(joinpath(@__DIR__, "SetStructs.jl"))
