@@ -66,7 +66,7 @@ function calculate_contribution_chipin(dc_idx_objvalue, dc_idx_costs, sPeer)
     # Calculate the contribution
     benefits = [dc_idx_objvalue[id] for id ∈ 0:(2^length(sPeer)-1)]
     benefits = first(benefits) .- benefits
-    contribution = Dict(zip(sPeer, ESAAnalytics.shapleyvalueanalysis(benefits)))
+    contribution = Dict(zip(sPeer, shapleyvalueanalysis(benefits)))
     # Calculate the ex post `chipin`
     costs = DataFrames.DataFrame(
         peer = String[],
@@ -86,4 +86,19 @@ function calculate_contribution_chipin(dc_idx_objvalue, dc_idx_costs, sPeer)
     DataFrames.transform!(costs, [:tc_ext_nocoop, :contribution] => (-) => :tc_expected)
     DataFrames.transform!(costs, [:tc_expected, :tc_ext_wicoop] => (-) => :chipin)
     return costs
+end
+
+function shapleyvalueanalysis(benefits)
+    nP = Int(log2(length(benefits)))
+    map_idx_participation = [digits(Bool, idx, base=2, pad=nP) for idx ∈ 0:(length(benefits)-1)]
+    converter = [2^i for i ∈ 0:(nP-1)]
+    contribution = zeros(nP)
+    for iP ∈ 1:nP, idx ∈ 1:2^nP
+        if !map_idx_participation[idx][iP]
+            nS = sum(map_idx_participation[idx])
+            idx_with_iP = idx + converter[iP]
+            contribution[iP] += factorial(nS)*factorial(nP - nS - 1)/factorial(nP) * (benefits[idx_with_iP] - benefits[idx])
+        end
+    end
+    return contribution
 end

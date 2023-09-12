@@ -4,7 +4,6 @@ module EnergyCommunities
 import JuMP, JuMP.Containers.DenseAxisArray
 import DataFrames
 import HDF5, SQLite, DBInterface
-import ESAAnalytics
 
 # Export lists ================================================================
 # Set structs
