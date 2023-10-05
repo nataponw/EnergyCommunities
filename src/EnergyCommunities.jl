@@ -38,7 +38,7 @@ Create a black database based on `db_structure_peer.sql` and populate with manda
 function createblankdatabase(sY_int::Vector{Int}, nTS::Int; dbname="blank.db")
     sTec_str = map(x -> x.value, sTec); sY_int = sort(sY_int)
     db = SQLite.DB(dbname)
-    f = open(joinpath(@__DIR__, "auxiliary_src\\db_structure.sql"), "r")
+    f = open(joinpath(@__DIR__, "auxiliary_src/db_structure.sql"), "r")
     allcommand = read(f, String)
     close(f)
     allcommand = replace(allcommand, '\r' => "")
