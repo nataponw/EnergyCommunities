@@ -1,5 +1,5 @@
 name = "EnergyCommunities"
-uuid = "22e6e995-a406-4503-9007-55f69a3ec865"
+uuid = "d7d6171c-d4a3-4050-bf82-c47425db8744"
 authors = ["Natapon Wanapinit"]
 version = "1.0.0-DEV"
 
@@ -9,9 +9,10 @@ DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
 JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
 SQLite = "0aa819cd-b072-5ff4-a722-6bc24af294d9"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
-julia = "1.9"
+julia = "1"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
