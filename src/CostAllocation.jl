@@ -25,16 +25,16 @@ function iterate_over_all_coalition(m)
             continue
         end
         # Reverse existing peer exclusion
-        for iPeer ∈ sPeer, iY ∈ sY
-            if JuMP.is_fixed(m[:vXCac_inttrade_elImp][iPeer, iY, first(sTS)])
-                JuMP.unfix.(m[:vXCac_inttrade_elImp][iPeer, iY, sTS])
-                JuMP.unfix.(m[:vXCac_inttrade_elExp][iPeer, iY, sTS])
-                JuMP.unfix.(m[:vXCac_inttrade_thImp][iPeer, iY, sTS])
-                JuMP.unfix.(m[:vXCac_inttrade_thExp][iPeer, iY, sTS])
-                JuMP.set_lower_bound.(m[:vXCac_inttrade_elImp][iPeer, iY, sTS], 0.0)
-                JuMP.set_lower_bound.(m[:vXCac_inttrade_elExp][iPeer, iY, sTS], 0.0)
-                JuMP.set_lower_bound.(m[:vXCac_inttrade_thImp][iPeer, iY, sTS], 0.0)
-                JuMP.set_lower_bound.(m[:vXCac_inttrade_thExp][iPeer, iY, sTS], 0.0)
+        for iPeer ∈ sPeer
+            if JuMP.is_fixed(m[:vXCac_inttrade_elImp][iPeer, first(sY), first(sTS)])
+                JuMP.unfix.(m[:vXCac_inttrade_elImp][iPeer, sY, sTS])
+                JuMP.unfix.(m[:vXCac_inttrade_elExp][iPeer, sY, sTS])
+                JuMP.unfix.(m[:vXCac_inttrade_thImp][iPeer, sY, sTS])
+                JuMP.unfix.(m[:vXCac_inttrade_thExp][iPeer, sY, sTS])
+                JuMP.set_lower_bound.(m[:vXCac_inttrade_elImp][iPeer, sY, sTS], 0.0)
+                JuMP.set_lower_bound.(m[:vXCac_inttrade_elExp][iPeer, sY, sTS], 0.0)
+                JuMP.set_lower_bound.(m[:vXCac_inttrade_thImp][iPeer, sY, sTS], 0.0)
+                JuMP.set_lower_bound.(m[:vXCac_inttrade_thExp][iPeer, sY, sTS], 0.0)
             end
         end
         # Apply new peer exclusion
