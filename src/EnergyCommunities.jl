@@ -151,17 +151,17 @@ function initializeModel(
     m[:dT] = dT
     m[:sPeer] = sPeer; m[:sY] = sY; m[:sTS] = sTS; m[:sTec] = sTec
     # To-do: attach all parameters to the model
-    m[:dem_el_hh] = JuMP.Containers.DenseAxisArray(reshape(pYTS.dem_el_hh, nPeer, nY, nTS), sPeer, sY, sTS)
-    m[:dem_el_ev] = JuMP.Containers.DenseAxisArray(reshape(pYTS.dem_el_ev, nPeer, nY, nTS), sPeer, sY, sTS)
-    m[:dem_th_hh] = JuMP.Containers.DenseAxisArray(reshape(pYTS.dem_th_hh, nPeer, nY, nTS), sPeer, sY, sTS)
-    m[:impprice_el] = JuMP.Containers.DenseAxisArray(reshape(pY.impprice_el, nPeer, nY), sPeer, sY)
-    m[:expprice_el] = JuMP.Containers.DenseAxisArray(reshape(pY.expprice_el, nPeer, nY), sPeer, sY)
-    m[:impprice_th] = JuMP.Containers.DenseAxisArray(reshape(pY.impprice_th, nPeer, nY), sPeer, sY)
-    m[:expprice_th] = JuMP.Containers.DenseAxisArray(reshape(pY.expprice_th, nPeer, nY), sPeer, sY)
-    m[:impprice_ng] = JuMP.Containers.DenseAxisArray(reshape(pY.impprice_ng, nPeer, nY), sPeer, sY)
-    m[:impprice_h2] = JuMP.Containers.DenseAxisArray(reshape(pY.impprice_h2, nPeer, nY), sPeer, sY)
-    m[:inttrade_fee_el] = JuMP.Containers.DenseAxisArray(reshape(filter(:parameter => ==("inttrade_fee_el"), pSca).value, nPeer), sPeer)
-    m[:inttrade_fee_th] = JuMP.Containers.DenseAxisArray(reshape(filter(:parameter => ==("inttrade_fee_th"), pSca).value, nPeer), sPeer)
+    m[:dem_el_hh] = DenseAxisArray(reshape(pYTS.dem_el_hh, nPeer, nY, nTS), sPeer, sY, sTS)
+    m[:dem_el_ev] = DenseAxisArray(reshape(pYTS.dem_el_ev, nPeer, nY, nTS), sPeer, sY, sTS)
+    m[:dem_th_hh] = DenseAxisArray(reshape(pYTS.dem_th_hh, nPeer, nY, nTS), sPeer, sY, sTS)
+    m[:impprice_el] = DenseAxisArray(reshape(pY.impprice_el, nPeer, nY), sPeer, sY)
+    m[:expprice_el] = DenseAxisArray(reshape(pY.expprice_el, nPeer, nY), sPeer, sY)
+    m[:impprice_th] = DenseAxisArray(reshape(pY.impprice_th, nPeer, nY), sPeer, sY)
+    m[:expprice_th] = DenseAxisArray(reshape(pY.expprice_th, nPeer, nY), sPeer, sY)
+    m[:impprice_ng] = DenseAxisArray(reshape(pY.impprice_ng, nPeer, nY), sPeer, sY)
+    m[:impprice_h2] = DenseAxisArray(reshape(pY.impprice_h2, nPeer, nY), sPeer, sY)
+    m[:inttrade_fee_el] = DenseAxisArray(reshape(filter(:parameter => ==("inttrade_fee_el"), pSca).value, nPeer), sPeer)
+    m[:inttrade_fee_th] = DenseAxisArray(reshape(filter(:parameter => ==("inttrade_fee_th"), pSca).value, nPeer), sPeer)
     # Energy exchange variables ---------------------------------------------------
     ## Agent
     JuMP.@variable(m, 0.0 ≤ vXCph_peer_elImp[sPeer, sY, sTS])
@@ -797,6 +797,8 @@ function reconstruct_denseaxisarray(values, dims, sPeer, sY, sTS, sTec)
         obj = DenseAxisArray(values, sPeer, sTec)
     elseif dims == ["sY", "sTS"]
         obj = DenseAxisArray(values, sY, sTS)
+    elseif dims == ["sPeer"]
+        obj = DenseAxisArray(values, sPeer)
     elseif dims == ["sY"]
         obj = DenseAxisArray(values, sY)
     else
