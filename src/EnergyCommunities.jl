@@ -150,6 +150,7 @@ function initializeModel(
     # Essential constants and sets permanently mapped to the model ----------------
     m[:dT] = dT
     m[:sPeer] = sPeer; m[:sY] = sY; m[:sTS] = sTS; m[:sTec] = sTec
+    # To-do: attach all parameters to the model
     m[:dem_el_hh] = JuMP.Containers.DenseAxisArray(reshape(pYTS.dem_el_hh, nPeer, nY, nTS), sPeer, sY, sTS)
     m[:dem_el_ev] = JuMP.Containers.DenseAxisArray(reshape(pYTS.dem_el_ev, nPeer, nY, nTS), sPeer, sY, sTS)
     m[:dem_th_hh] = JuMP.Containers.DenseAxisArray(reshape(pYTS.dem_th_hh, nPeer, nY, nTS), sPeer, sY, sTS)
@@ -159,6 +160,8 @@ function initializeModel(
     m[:expprice_th] = JuMP.Containers.DenseAxisArray(reshape(pY.expprice_th, nPeer, nY), sPeer, sY)
     m[:impprice_ng] = JuMP.Containers.DenseAxisArray(reshape(pY.impprice_ng, nPeer, nY), sPeer, sY)
     m[:impprice_h2] = JuMP.Containers.DenseAxisArray(reshape(pY.impprice_h2, nPeer, nY), sPeer, sY)
+    m[:inttrade_fee_el] = JuMP.Containers.DenseAxisArray(reshape(filter(:parameter => ==("inttrade_fee_el"), pSca).value, nPeer), sPeer)
+    m[:inttrade_fee_th] = JuMP.Containers.DenseAxisArray(reshape(filter(:parameter => ==("inttrade_fee_th"), pSca).value, nPeer), sPeer)
     # Energy exchange variables ---------------------------------------------------
     ## Agent
     JuMP.@variable(m, 0.0 ≤ vXCph_peer_elImp[sPeer, sY, sTS])
@@ -441,12 +444,12 @@ function initializeModel(
         JuMP.@expression(m, cXC_comm[iY ∈ sY], 0.0)
         JuMP.@expression(m, cXC_inttrade[iPeer ∈ sPeer, iY ∈ sY],
             # Electricity trade among peers
-            + gp(pSca, :value, [iPeer.value, "inttrade_fee_el"]) * dT * (
+            + m[:inttrade_fee_el][iPeer] * dT * (
                 + sum(vXCac_inttrade_elImp[iPeer, iY, :])
                 + sum(vXCac_inttrade_elExp[iPeer, iY, :])
             )
             # Thermal energy trade among peers
-            + gp(pSca, :value, [iPeer.value, "inttrade_fee_th"]) * dT * (
+            + m[:inttrade_fee_th][iPeer] * dT * (
                 + sum(vXCac_inttrade_thImp[iPeer, iY, :])
                 + sum(vXCac_inttrade_thExp[iPeer, iY, :])
             )
