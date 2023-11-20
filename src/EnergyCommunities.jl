@@ -153,6 +153,12 @@ function initializeModel(
     m[:dem_el_hh] = JuMP.Containers.DenseAxisArray(reshape(pYTS.dem_el_hh, nPeer, nY, nTS), sPeer, sY, sTS)
     m[:dem_el_ev] = JuMP.Containers.DenseAxisArray(reshape(pYTS.dem_el_ev, nPeer, nY, nTS), sPeer, sY, sTS)
     m[:dem_th_hh] = JuMP.Containers.DenseAxisArray(reshape(pYTS.dem_th_hh, nPeer, nY, nTS), sPeer, sY, sTS)
+    m[:impprice_el] = JuMP.Containers.DenseAxisArray(reshape(pY.impprice_el, nPeer, nY), sPeer, sY)
+    m[:expprice_el] = JuMP.Containers.DenseAxisArray(reshape(pY.expprice_el, nPeer, nY), sPeer, sY)
+    m[:impprice_th] = JuMP.Containers.DenseAxisArray(reshape(pY.impprice_th, nPeer, nY), sPeer, sY)
+    m[:expprice_th] = JuMP.Containers.DenseAxisArray(reshape(pY.expprice_th, nPeer, nY), sPeer, sY)
+    m[:impprice_ng] = JuMP.Containers.DenseAxisArray(reshape(pY.impprice_ng, nPeer, nY), sPeer, sY)
+    m[:impprice_h2] = JuMP.Containers.DenseAxisArray(reshape(pY.impprice_h2, nPeer, nY), sPeer, sY)
     # Energy exchange variables ---------------------------------------------------
     ## Agent
     JuMP.@variable(m, 0.0 ≤ vXCph_peer_elImp[sPeer, sY, sTS])
@@ -447,28 +453,28 @@ function initializeModel(
         )
         JuMP.@expression(m, cXC_exttrade[iPeer ∈ sPeer, iY ∈ sY],
             # Electricity trade with the utility
-            + gp(pY, :impprice_el, [iPeer.value, iY.value]) * dT * sum(vXCac_exttrade_elImp[iPeer, iY, :])
-            - gp(pY, :expprice_el, [iPeer.value, iY.value]) * dT * sum(vXCac_exttrade_elExp[iPeer, iY, :])
+            + m[:impprice_el][iPeer, iY] * dT * sum(vXCac_exttrade_elImp[iPeer, iY, :])
+            - m[:expprice_el][iPeer, iY] * dT * sum(vXCac_exttrade_elExp[iPeer, iY, :])
             # Thermal energy trade with the utility
-            + gp(pY, :impprice_th, [iPeer.value, iY.value]) * dT * sum(vXCac_exttrade_thImp[iPeer, iY, :])
-            - gp(pY, :expprice_th, [iPeer.value, iY.value]) * dT * sum(vXCac_exttrade_thExp[iPeer, iY, :])
+            + m[:impprice_th][iPeer, iY] * dT * sum(vXCac_exttrade_thImp[iPeer, iY, :])
+            - m[:expprice_th][iPeer, iY] * dT * sum(vXCac_exttrade_thExp[iPeer, iY, :])
             # Natural gas import from the utility
-            + gp(pY, :impprice_ng, [iPeer.value, iY.value]) * dT * (
+            + m[:impprice_ng][iPeer, iY] * dT * (
                 + sum(vCon_gb_ng[iPeer, iY, :]) + sum(vCon_chpng_ng[iPeer, iY, :])
             )
             # Hydrogen import from the utility
-            + gp(pY, :impprice_h2, [iPeer.value, iY.value]) * dT * (
+            + m[:impprice_h2][iPeer, iY] * dT * (
                 + sum(vCon_hb_h2[iPeer, iY, :]) + sum(vCon_chph2_h2[iPeer, iY, :])
             )
         )
     else
         JuMP.@expression(m, cXC_comm[iY ∈ sY],
-            + minimum(filter(:year => ==(iY.value), pY).impprice_el) * dT * sum(vXCph_comm_elImp[iY, :])
-            + minimum(filter(:year => ==(iY.value), pY).impprice_th) * dT * sum(vXCph_comm_thImp[iY, :])
-            + minimum(filter(:year => ==(iY.value), pY).impprice_ng) * dT * sum(vXCph_comm_ngImp[iY, :])
-            + minimum(filter(:year => ==(iY.value), pY).impprice_h2) * dT * sum(vXCph_comm_h2Imp[iY, :])
-            - maximum(filter(:year => ==(iY.value), pY).expprice_el) * dT * sum(vXCph_comm_elExp[iY, :])
-            - maximum(filter(:year => ==(iY.value), pY).expprice_th) * dT * sum(vXCph_comm_thExp[iY, :])
+            + minimum(m[:impprice_el][:, iY]) * dT * sum(vXCph_comm_elImp[iY, :])
+            + minimum(m[:impprice_th][:, iY]) * dT * sum(vXCph_comm_thImp[iY, :])
+            + minimum(m[:impprice_ng][:, iY]) * dT * sum(vXCph_comm_ngImp[iY, :])
+            + minimum(m[:impprice_h2][:, iY]) * dT * sum(vXCph_comm_h2Imp[iY, :])
+            - maximum(m[:expprice_el][:, iY]) * dT * sum(vXCph_comm_elExp[iY, :])
+            - maximum(m[:expprice_th][:, iY]) * dT * sum(vXCph_comm_thExp[iY, :])
         )
         JuMP.@expression(m, cXC_inttrade[iPeer ∈ sPeer, iY ∈ sY], 0.0)
         JuMP.@expression(m, cXC_exttrade[iPeer ∈ sPeer, iY ∈ sY], 0.0)
