@@ -532,7 +532,7 @@ function initializeModel(
     ## Thermal demand curtailment
     if bConElas
         JuMP.@constraint(m, icDem_thCur_limit,
-            vDem_thCur_rate .≤ repeat(filter(:parameter => ==(:thCur_max), pSca).value, inner=(1, nY))
+            vDem_thCur_rate .≤ repeat(filter(:parameter => ==("thCur_max"), pSca).value, inner=(1, nY))
         )
         JuMP.@constraint(m, ecDem_thCur,
             vDem_thCur .== reshape(pYTS.dem_th_hh, nPeer, nY, nTS) .* repeat(vDem_thCur_rate, inner=(1, 1, nTS))
