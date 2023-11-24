@@ -540,7 +540,8 @@ function initializeModel(
         par_dem_th_hh_total = dT .* DenseAxisArray(sum(reshape(pYTS.dem_th_hh, nPeer, nY, nTS), dims=3)[:, :, 1], sPeer, sY)
         JuMP.@expression(m, cElas[iPeer ∈ sPeer, iY ∈ sY],
             + gp(pSca, :value, [iPeer.value, "thCur_baseprice"]) * (vDem_thCur_rate[iPeer, iY] * par_dem_th_hh_total[iPeer, iY])
-            + gp(pSca, :value, [iPeer.value, "thCur_incrementprice"])/2.0 * (vDem_thCur_rate[iPeer, iY] * par_dem_th_hh_total[iPeer, iY])^2.0
+            # The exponent must be an integer; otherwise, JuMP will not recognize the expression as quadratic.
+            + gp(pSca, :value, [iPeer.value, "thCur_incrementprice"])/2.0 * (vDem_thCur_rate[iPeer, iY] * par_dem_th_hh_total[iPeer, iY])^2
         )
     else
         JuMP.fix.(vDem_thCur, 0.0, force=true)
