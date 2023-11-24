@@ -339,7 +339,7 @@ function initializeModel(
         limit_increase = par_dem_el_ev_peak[iPeer, iY] * gp(pSca, :value, [iPeer.value, "flexev_share"])
         limit_soc = par_dem_el_ev_mean[iPeer, iY] * dT * gp(pSca, :value, [iPeer.value, "flexev_share"]) * gp(pSca, :value, [iPeer.value, "flexev_duration"])
         ## Maximum increase or decrease as a share of peak of planned demand
-        JuMP.set_lower_bound.(vDem_evshift_increase[iPeer, iY, :], -limit_increase)
+        JuMP.set_lower_bound.(vDem_evshift_increase[iPeer, iY, :], max.(-limit_increase, -m[:dem_el_ev][iPeer, iY, :]))
         JuMP.set_upper_bound.(vDem_evshift_increase[iPeer, iY, :], +limit_increase)
         ## Maximum and minimum of shifted energy (SOC) as a share * shift duration of mean of planned demand
         JuMP.set_lower_bound.(vDem_evshift_soc[iPeer, iY, :], -limit_soc)
