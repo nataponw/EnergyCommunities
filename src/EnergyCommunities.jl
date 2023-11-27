@@ -127,7 +127,7 @@ Build an optimization problem
 function initializeModel(
     sPeer, sY, sTS, sTec, pSca, pY, pTec, pYTec, pYTS, dT;
     bOneoff::Bool=false, bFuelswitch::Bool=false, bConElas::Bool=false, bNoExpand::Bool=false,
-    bIntTrade::Bool=false, sExcludedPeer=Peer[]
+    bCHPCurtail::Bool=false, bIntTrade::Bool=false, sExcludedPeer=Peer[]
     )
     # Sorting indexes and parameters
     sort!(sPeer); sort!(sY); sort!(sTS); sort!(sTec)
@@ -312,26 +312,42 @@ function initializeModel(
     JuMP.@constraint(m, icOpt_chpng,
         vOpt_chpng_gen_el .≤ repeat(vCap[:, :, Tec("chpng")], inner=(1, 1, nTS))
     )
-    JuMP.@constraint(m, ecOpt_chpng,
-        vOpt_chpng_gen_el ./ repeat(filter(:tec => ==("chpng"), pTec).eff_el, inner=(1, nY, nTS))
-        .==
-        vOpt_chpng_gen_th ./ repeat(filter(:tec => ==("chpng"), pTec).eff_th, inner=(1, nY, nTS))
-    )
     JuMP.@constraint(m, ecCon_chpng,
         vOpt_chpng_gen_el .== vCon_chpng_ng .* repeat(filter(:tec => ==("chpng"), pTec).eff_el, inner=(1, nY, nTS))
     )
+    if bCHPCurtail
+        JuMP.@constraint(m, ecOpt_chpng,
+            vOpt_chpng_gen_th ./ repeat(filter(:tec => ==("chpng"), pTec).eff_th, inner=(1, nY, nTS))
+            .≤
+            vOpt_chpng_gen_el ./ repeat(filter(:tec => ==("chpng"), pTec).eff_el, inner=(1, nY, nTS))
+        )
+    else
+        JuMP.@constraint(m, ecOpt_chpng,
+            vOpt_chpng_gen_th ./ repeat(filter(:tec => ==("chpng"), pTec).eff_th, inner=(1, nY, nTS))
+            .==
+            vOpt_chpng_gen_el ./ repeat(filter(:tec => ==("chpng"), pTec).eff_el, inner=(1, nY, nTS))
+        )
+    end
     ### CHPH2 (hydrogen)
         JuMP.@constraint(m, icOpt_chph2,
         vOpt_chph2_gen_el .≤ repeat(vCap[:, :, Tec("chph2")], inner=(1, 1, nTS))
     )
-    JuMP.@constraint(m, ecOpt_chph2,
-        vOpt_chph2_gen_el ./ repeat(filter(:tec => ==("chph2"), pTec).eff_el, inner=(1, nY, nTS))
-        .==
-        vOpt_chph2_gen_th ./ repeat(filter(:tec => ==("chph2"), pTec).eff_th, inner=(1, nY, nTS))
-    )
     JuMP.@constraint(m, ecCon_chph2,
         vOpt_chph2_gen_el .== vCon_chph2_h2 .* repeat(filter(:tec => ==("chph2"), pTec).eff_el, inner=(1, nY, nTS))
     )
+    if bCHPCurtail
+        JuMP.@constraint(m, ecOpt_chph2,
+            vOpt_chph2_gen_th ./ repeat(filter(:tec => ==("chph2"), pTec).eff_th, inner=(1, nY, nTS))
+            .≤
+            vOpt_chph2_gen_el ./ repeat(filter(:tec => ==("chph2"), pTec).eff_el, inner=(1, nY, nTS))
+        )
+    else
+        JuMP.@constraint(m, ecOpt_chph2,
+            vOpt_chph2_gen_th ./ repeat(filter(:tec => ==("chph2"), pTec).eff_th, inner=(1, nY, nTS))
+            .==
+            vOpt_chph2_gen_el ./ repeat(filter(:tec => ==("chph2"), pTec).eff_el, inner=(1, nY, nTS))
+        )
+    end
     # Demand shift ----------------------------------------------------------------
     par_dem_el_ev_peak = DenseAxisArray(dropdims(maximum(reshape(pYTS.dem_el_ev, nPeer, nY, nTS), dims=3), dims=3), sPeer, sY)
     par_dem_el_ev_mean = DenseAxisArray(dropdims(sum(reshape(pYTS.dem_el_ev, nPeer, nY, nTS) / nTS, dims=3), dims=3), sPeer, sY)
