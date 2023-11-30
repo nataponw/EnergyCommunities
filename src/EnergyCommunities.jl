@@ -121,13 +121,16 @@ Build an optimization problem
 - `bFuelswitch`
 - `bConElas`
 - `bNoExpand`
+- `bCHPCurtail`
 - `bIntTrade`
 - `sExcludedPeer`
+- `solverbackend`: if a solver is provided, the model is created via `JuMP.direct_model` instead of `JuMP.Model`
 """
 function initializeModel(
     sPeer, sY, sTS, sTec, pSca, pY, pTec, pYTec, pYTS, dT;
     bOneoff::Bool=false, bFuelswitch::Bool=false, bConElas::Bool=false, bNoExpand::Bool=false,
-    bCHPCurtail::Bool=false, bIntTrade::Bool=false, sExcludedPeer=Peer[]
+    bCHPCurtail::Bool=false, bIntTrade::Bool=false, sExcludedPeer=Peer[],
+    solverbackend=missing,
     )
     # Sorting indexes and parameters
     sort!(sPeer); sort!(sY); sort!(sTS); sort!(sTec)
@@ -137,7 +140,11 @@ function initializeModel(
     sort!(pYTec, [:tec, :year, :agentid])
     sort!(pYTS, [:timestep, :year, :agentid])
     # Building the model
-    m = JuMP.Model()
+    if ismissing(solverbackend)
+        m = JuMP.Model()
+    else
+        m = JuMP.direct_model(solverbackend)
+    end
     # Essential mappings and parameters
     sTS_next = Dict(sTS .=> circshift(sTS, -1))
     timesteps_in_year = Int(hours_in_year/dT)
