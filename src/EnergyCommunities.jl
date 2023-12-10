@@ -634,43 +634,65 @@ Save all results and essential sets into a HDF5 file
 See also : [`loadResults`](@ref)
 """
 function saveResults(m::JuMP.Model, filename::String; bSaveConstraintDual::Bool=false)
+    function _write_value_dim(objname, value, dims; fid=fid)
+        gid = HDF5.create_group(fid, string(objname))
+        HDF5.write_dataset(gid, "value", value)
+        HDF5.write_dataset(gid, "dims", dims)
+        HDF5.close(gid)
+        return nothing
+    end
     # Create or overwrite an existing file
     fid = HDF5.h5open(filename, "w")
+    # Categorize registered objects
+    vArrVar = Symbol[]; vArrCon = Symbol[]; vArrExp = Symbol[]; vArrPar = Symbol[]
+    vVar = Symbol[]; vCon = Symbol[]; vExp = Symbol[]; vPar = Symbol[]; vSet = Symbol[]
+    for obj ∈ keys(JuMP.object_dictionary(m))
+        objType = typeof(m[obj])
+        if objType <: JuMP.Containers.DenseAxisArray
+            elementType = typeof(first(m[obj]))
+            if elementType <: JuMP.VariableRef
+                push!(vArrVar, obj)
+            elseif elementType <: JuMP.ConstraintRef
+                push!(vArrCon, obj)
+            elseif elementType <: JuMP.AffExpr
+                push!(vArrExp, obj)
+            elseif elementType <: Number
+                push!(vArrPar, obj)
+            else
+                @warn "Unable to identify the type of $(string(obj))"
+            end
+        elseif objType <: JuMP.VariableRef
+            push!(vVar, obj)
+        elseif objType <: JuMP.ConstraintRef
+            push!(vCon, obj)
+        elseif objType <: JuMP.AffExpr
+            push!(vExp, obj)
+        elseif objType <: Number
+            push!(vPar, obj)
+        elseif objType <: Vector
+            push!(vSet, obj)
+        else
+            @warn "Unable to identify the type of $(string(obj))"
+        end
+    end
     # Write sets
-    allSets = [:sPeer, :sY, :sTS, :sTec]
     HDF5.write_dataset(fid, "_index_sPeer", [iPeer.value for iPeer ∈ m[:sPeer]])
     HDF5.write_dataset(fid, "_index_sY", [iY.value for iY ∈ m[:sY]])
     HDF5.write_dataset(fid, "_index_sTS", m[:sTS])
     HDF5.write_dataset(fid, "_index_sTec", [iTec.value for iTec ∈ m[:sTec]])
-    # List objects
-    allObjects = setdiff(keys(JuMP.object_dictionary(m)), allSets)
-    allConstraintRef = [x for x ∈ allObjects if ((string(x)[1:2]=="ec") | (string(x)[1:2]=="ic"))]
-    !bSaveConstraintDual && setdiff!(allObjects, allConstraintRef)
-    # Process objects
-    for obj ∈ allObjects
-        gid = HDF5.create_group(fid, string(obj))
-        if obj in allConstraintRef
-            HDF5.write_dataset(gid, "value", JuMP.dual.(m[obj]).data)
-        elseif typeof(m[obj]) <: Number
-            HDF5.write_dataset(gid, "value", m[obj])
-        else
-            HDF5.write_dataset(gid, "value", JuMP.value.(m[obj]).data)
-        end
-        listDims = listdimdenseaxisarray(m[obj])
-        if isempty(listDims)
-            HDF5.write_dataset(gid, "dims", ["scalar"])
-        else
-            HDF5.write_dataset(gid, "dims", listDims)
-        end
-        HDF5.close(gid)
+    # write data
+    [_write_value_dim(obj, JuMP.value.(m[obj]).data, listdimdenseaxisarray(m[obj])) for obj ∈ vArrVar]
+    [_write_value_dim(obj, JuMP.value.(m[obj]).data, listdimdenseaxisarray(m[obj])) for obj ∈ vArrExp]
+    [_write_value_dim(obj, m[obj].data, listdimdenseaxisarray(m[obj])) for obj ∈ vArrPar]
+    [_write_value_dim(obj, JuMP.value(m[obj]), ["scalar"]) for obj ∈ vVar]
+    [_write_value_dim(obj, JuMP.value(m[obj]), ["scalar"]) for obj ∈ vExp]
+    [_write_value_dim(obj, m[obj], ["scalar"]) for obj ∈ vPar]
+    if bSaveConstraintDual
+        [_write_value_dim(obj, JuMP.dual.(m[obj]).data, listdimdenseaxisarray(m[obj])) for obj ∈ vArrCon]
+        [_write_value_dim(obj, JuMP.dual(m[obj]), ["scalar"]) for obj ∈ vCon]
     end
-    # Write essential scalar values
-    exportScalar = Dict{String, Float64}("objvalue" => JuMP.objective_value(m))
-    for k ∈ keys(exportScalar)
-        gid = HDF5.create_group(fid, k)
-        HDF5.write_dataset(gid, "value", exportScalar[k])
-        HDF5.write_dataset(gid, "dims", ["scalar"]); HDF5.close(gid)
-    end
+    # Write objective values
+    _write_value_dim("objvalue", JuMP.objective_value(m), ["scalar"])
     # Close the connection
     HDF5.close(fid)
     return nothing
@@ -797,10 +819,15 @@ function listdimdenseaxisarray(obj)
     dims = String[]
     for i ∈ 1:ndims(obj)
         index = first(obj.axes[i])
-        isa(index, Peer) && push!(dims, "sPeer")
-        isa(index, Year) && push!(dims, "sY")
-        isa(index, Int) && push!(dims, "sTS")
-        isa(index, Tec) && push!(dims, "sTec")
+        if isa(index, Peer)
+            push!(dims, "sPeer")
+        elseif isa(index, Year)
+            push!(dims, "sY")
+        elseif isa(index, Int)
+            push!(dims, "sTS")
+        elseif isa(index, Tec)
+            push!(dims, "sTec")
+        end
     end
     return dims
 end
