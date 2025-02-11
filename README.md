@@ -1,12 +1,12 @@
-# Energy Communities 
+# EnergyCommunities.jl
 
 This package presents an operation and investment optimization model for energy communities with the options for local energy (electricity and heat) trading.
 The core model is documented in the paper [Link](www.google.com).
 
-An example script together with databases is provided in the folder `example`. In the example, the status quo scenario (SQ) and the electricity trading scenario (EL), as defined in the original paper are calculated.
+An example script together with databases is provided in the folder `example`. In the example, the status quo scenario (SQ) and the electricity trading scenario (EL), as defined in the original paper, are calculated.
 
 ## Specific types
-Custom types---`Year`, `Peer`, and `Tec`---are created to differentiate these sets from timesteps.
+Custom types `Year`, `Peer`, and `Tec` are created to differentiate these sets from timesteps.
 These types and their associated methods are defined in `src\SetStructs.jl`.
 
 ## Database
