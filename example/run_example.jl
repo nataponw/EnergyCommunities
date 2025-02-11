@@ -16,14 +16,14 @@ dbPaths = ["example/database/db_pg$(i).db" for i ∈ 1:8]
     sTS, sTec, sPeer,
     agentid,
     pSca, pY, pTec, pYTec, pYTS
-) = processParameters(dbPaths, sY, sDay, dT)
+) = process_parameters(dbPaths, sY, sDay, dT)
 
 # Optimize the status quo scenario (SQ) =======================================
 function create_model_SQ(;sPeer=sPeer, sY=sY, sTS=sTS, sTec=sTec, pSca=pSca, pY=pY, pTec=pTec, pYTec=pYTec, pYTS=pYTS, dT=dT, selSolver=selSolver)
     pSca = deepcopy(pSca)
     # Disable the EV flexible charging
     pSca[pSca.parameter .∈ Ref(["flexev_share", "flexev_duration"]), :value] .= 0.0
-    m = initializeModel(
+    m = initialize_model(
         sPeer, sY, sTS, sTec, pSca, pY, pTec, pYTec, pYTS, dT,
         bOneoff=false, bFuelswitch=false, bConElas=false, bNoExpand=true,
         bCHPThCurtail=false, bIntTrade=true, sExcludedPeer=sPeer, solverbackend=selSolver
@@ -41,7 +41,7 @@ function create_model_EL(;sPeer=sPeer, sY=sY, sTS=sTS, sTec=sTec, pSca=pSca, pY=
     pTec = deepcopy(pTec)
     # Disable the district heating
     pTec[pTec.tec .== "dh", [:pot, :scap_cap]] .= 0.
-    m = initializeModel(
+    m = initialize_model(
         sPeer, sY, sTS, sTec, pSca, pY, pTec, pYTec, pYTS, dT,
         bOneoff=false, bFuelswitch=false, bConElas=false, bNoExpand=true,
         bCHPThCurtail=false, bIntTrade=true, sExcludedPeer=Peer[], solverbackend=selSolver
@@ -61,5 +61,5 @@ allocatedCost_competitive = allocate_cost_marginalprice(model_EL)
 @show allocatedCost_competitive
 
 # Unload the solved model instance into HDF4 file =============================
-saveResults(model_SQ, "results_SQ.h5")
-saveResults(model_EL, "results_EL.h5")
+save_results(model_SQ, "results_SQ.h5")
+save_results(model_EL, "results_EL.h5")

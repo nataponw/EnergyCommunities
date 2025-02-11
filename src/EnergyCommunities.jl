@@ -9,11 +9,11 @@ import HDF5, SQLite, DBInterface
 # Define set structs
 export Year, Peer, Tec
 # process databases and parameters
-export createblankdatabase, processParameters
+export create_blankdatabase, process_parameters
 # Initialize a model
-export initializeModel
+export initialize_model
 # Load and unload model results
-export saveResults, loadResults
+export save_results, load_results
 # Process cost allocation
 export iterate_over_all_coalition, allocate_cost_contribution, allocate_cost_marginalprice
 # Miscellaneous functions

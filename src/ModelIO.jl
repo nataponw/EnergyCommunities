@@ -1,14 +1,14 @@
 """
-    saveResults(m::JuMP.Model, filename::String; bSaveConstraintDual::Bool=false)
+    save_results(m::JuMP.Model, filename::String; bSaveConstraintDual::Bool=false)
 
 Save all results and essential sets into a HDF5 file
 
 # Keyword Arguments
 - `bSaveConstraintDual` : save dual variables
 
-See also : [`loadResults`](@ref)
+See also : [`load_results`](@ref)
 """
-function saveResults(m::JuMP.Model, filename::String; bSaveConstraintDual::Bool=false)
+function save_results(m::JuMP.Model, filename::String; bSaveConstraintDual::Bool=false)
     function _write_value_dim(objname, value, dims; fid=fid)
         gid = HDF5.create_group(fid, string(objname))
         HDF5.write_dataset(gid, "value", value)
@@ -56,14 +56,14 @@ function saveResults(m::JuMP.Model, filename::String; bSaveConstraintDual::Bool=
     HDF5.write_dataset(fid, "_index_sTS", m[:sTS])
     HDF5.write_dataset(fid, "_index_sTec", [iTec.value for iTec ∈ m[:sTec]])
     # write data
-    [_write_value_dim(obj, JuMP.value.(m[obj]).data, listdimdenseaxisarray(m[obj])) for obj ∈ vArrVar]
-    [_write_value_dim(obj, JuMP.value.(m[obj]).data, listdimdenseaxisarray(m[obj])) for obj ∈ vArrExp]
-    [_write_value_dim(obj, m[obj].data, listdimdenseaxisarray(m[obj])) for obj ∈ vArrPar]
+    [_write_value_dim(obj, JuMP.value.(m[obj]).data, list_dim_denseaxisarray(m[obj])) for obj ∈ vArrVar]
+    [_write_value_dim(obj, JuMP.value.(m[obj]).data, list_dim_denseaxisarray(m[obj])) for obj ∈ vArrExp]
+    [_write_value_dim(obj, m[obj].data, list_dim_denseaxisarray(m[obj])) for obj ∈ vArrPar]
     [_write_value_dim(obj, JuMP.value(m[obj]), ["scalar"]) for obj ∈ vVar]
     [_write_value_dim(obj, JuMP.value(m[obj]), ["scalar"]) for obj ∈ vExp]
     [_write_value_dim(obj, m[obj], ["scalar"]) for obj ∈ vPar]
     if bSaveConstraintDual
-        [_write_value_dim(obj, JuMP.dual.(m[obj]).data, listdimdenseaxisarray(m[obj])) for obj ∈ vArrCon]
+        [_write_value_dim(obj, JuMP.dual.(m[obj]).data, list_dim_denseaxisarray(m[obj])) for obj ∈ vArrCon]
         [_write_value_dim(obj, JuMP.dual(m[obj]), ["scalar"]) for obj ∈ vCon]
     end
     # Write objective values
@@ -74,16 +74,16 @@ function saveResults(m::JuMP.Model, filename::String; bSaveConstraintDual::Bool=
 end
 
 """
-    loadResults(filename::String; objlist::Vector{String})
+    load_results(filename::String; objlist::Vector{String})
 
 Load all saved results from an HDF5 into a dictionary
 
 # Keyword Arguments
 - `objlist` : List of objects to be loaded. By default, all objects are loaded.
 
-See also : [`saveResults`](@ref)
+See also : [`save_results`](@ref)
 """
-function loadResults(filename::String; objlist::Vector{String}=String[])
+function load_results(filename::String; objlist::Vector{String}=String[])
     fid = HDF5.h5open(filename, "r")
     isempty(objlist) && (objlist = [x for x ∈ HDF5.keys(fid) if !contains(x, "_index_")])
     results = Dict{Symbol, Any}()

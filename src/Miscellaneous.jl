@@ -4,7 +4,7 @@
 Convert a model-related denseaxisarray into a dataframe with formated column names
 """
 function convert_modelobj2df(obj)
-    dims = listdimdenseaxisarray(obj)
+    dims = list_dim_denseaxisarray(obj)
     df = convert_denseaxisarray2dataframe(obj)
     DataFrames.rename!(df, vcat(dims, "value"))
     if "sPeer" ∈ DataFrames.names(df)
@@ -62,11 +62,11 @@ function convert_denseaxisarray2dataframe(obj::JuMP.Containers.DenseAxisArray)
 end
 
 """
-    listdimdenseaxisarray(obj)
+    list_dim_denseaxisarray(obj)
 
 List dimensions of a denseaxisarray object
 """
-function listdimdenseaxisarray(obj)
+function list_dim_denseaxisarray(obj)
     dims = String[]
     for i ∈ 1:ndims(obj)
         index = first(obj.axes[i])

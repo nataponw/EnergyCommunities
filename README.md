@@ -10,7 +10,7 @@ Custom types `Year`, `Peer`, and `Tec` are created to differentiate these sets f
 These types and their associated methods are defined in `src\SetStructs.jl`.
 
 ## Database
-A database is dedicated for an individual participant. A blank database can be created from the file `src\auxiliary_src\db_structure.sql` via the function `createblankdatabase`. Each database contains the following tables:
+A database is dedicated for an individual participant. A blank database can be created from the file `src\auxiliary_src\db_structure.sql` via the function `create_blankdatabase`. Each database contains the following tables:
 
 - `id`, a table with an agent id and location information
 - `pSca`, a table with scalar parameters, e.g., trading fees

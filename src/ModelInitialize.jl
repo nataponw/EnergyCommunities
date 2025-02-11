@@ -1,11 +1,11 @@
 """
-    initializeModel(sPeer, sY, sTS, pSca, pY, pTec, pYTec, pYTS, dT; kwargs)
+    initialize_model(sPeer, sY, sTS, pSca, pY, pTec, pYTec, pYTS, dT; kwargs)
 
 Build an optimization problem
 
 # Arguments
 - `sPeer`, `sY`, `sTS`, `sTec` : sets of peers, years, timesteps, and technologies, respectively.
-- `pSca`, `pY`, `pTec`, `pYTec`, `pYTS` : Extracted parameter dataframes from [`processParameters`](@ref)
+- `pSca`, `pY`, `pTec`, `pYTec`, `pYTS` : Extracted parameter dataframes from [`process_parameters`](@ref)
 - `dT` : Time interval
 
 # Keyword Arguments
@@ -18,7 +18,7 @@ Build an optimization problem
 - `sExcludedPeer`: List of peers excluded from the internal trading
 - `solverbackend`: if a solver is provided, the model is created via `JuMP.direct_model` instead of `JuMP.Model`
 """
-function initializeModel(
+function initialize_model(
     sPeer, sY, sTS, sTec, pSca, pY, pTec, pYTec, pYTS, dT;
     bOneoff::Bool=false, bFuelswitch::Bool=false, bConElas::Bool=false, bNoExpand::Bool=false,
     bCHPThCurtail::Bool=false, bIntTrade::Bool=false, sExcludedPeer=Peer[],

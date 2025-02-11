@@ -67,7 +67,7 @@ function allocate_cost_contribution(dc_idx_objvalue, dc_idx_costs, sPeer)
     # Calculate the contribution
     benefits = [dc_idx_objvalue[id] for id ∈ 0:(2^length(sPeer)-1)]
     benefits = first(benefits) .- benefits
-    contribution = Dict(zip(sPeer, shapleyvalueanalysis(benefits)))
+    contribution = Dict(zip(sPeer, analyze_shapleyvalue(benefits)))
     # Calculate the ex post `chipin`
     allocatedCost = DataFrames.DataFrame(
         peer = String[],
@@ -90,13 +90,13 @@ function allocate_cost_contribution(dc_idx_objvalue, dc_idx_costs, sPeer)
 end
 
 """
-    shapleyvalueanalysis(benefits::Vector{Float64})
+    analyze_shapleyvalue(benefits::Vector{Float64})
 
 Given `benefits`, the list of benefits from cooperation, calculate individual contribution.
 
 The location indicates the coalition setup, see `calculate_contribution_chipin`. The first element is with an empty coalition, and the last element is with the grand coalition.
 """
-function shapleyvalueanalysis(benefits::Vector{Float64})
+function analyze_shapleyvalue(benefits::Vector{Float64})
     nP = Int(log2(length(benefits)))
     map_idx_participation = [digits(Bool, idx, base=2, pad=nP) for idx ∈ 0:(length(benefits)-1)]
     converter = [2^i for i ∈ 0:(nP-1)]

@@ -1,9 +1,9 @@
 """
-    createblankdatabase(sY_int::Vector{Int}, nTS::Int; dbname="blank.db")
+    create_blankdatabase(sY_int::Vector{Int}, nTS::Int; dbname="blank.db")
 
 Create a black database based on `db_structure_peer.sql` and populate with mandatory keys
 """
-function createblankdatabase(sY_int::Vector{Int}, nTS::Int; dbname="blank.db")
+function create_blankdatabase(sY_int::Vector{Int}, nTS::Int; dbname="blank.db")
     sTec_str = map(x -> x.value, sTec); sY_int = sort(sY_int)
     db = SQLite.DB(dbname)
     f = open(joinpath(@__DIR__, "auxiliary_src/db_structure.sql"), "r")
@@ -33,7 +33,7 @@ function createblankdatabase(sY_int::Vector{Int}, nTS::Int; dbname="blank.db")
 end
 
 """
-    processParameters(dbPaths::Vector{String}, sY::Vector{Year}, sDay::Vector{Int}, dT::Real)
+    process_parameters(dbPaths::Vector{String}, sY::Vector{Year}, sDay::Vector{Int}, dT::Real)
 
 Extract and filter parameters from all peers listed in `dbPaths`
 
@@ -43,9 +43,9 @@ Extract and filter parameters from all peers listed in `dbPaths`
 - `sDay` : Selected days
 - `dT` : Time interval used to map `sTS`
 
-See also : [`processParameterSingleAgent`](@ref)
+See also : [`process_parametersingleAgent`](@ref)
 """
-function processParameters(dbPaths::Vector{String}, sY::Vector{Year}, sDay::Vector{Int}, dT::Real)
+function process_parameters(dbPaths::Vector{String}, sY::Vector{Year}, sDay::Vector{Int}, dT::Real)
     function add_peername_and_merge(df, df_add, name)
         df_add[!, :agentid] .= name
         DataFrames.select!(df_add, :agentid, :)
@@ -59,7 +59,7 @@ function processParameters(dbPaths::Vector{String}, sY::Vector{Year}, sDay::Vect
     agentid = DataFrames.DataFrame(); pSca = DataFrames.DataFrame(); pY = DataFrames.DataFrame(); pTec = DataFrames.DataFrame(); pYTec = DataFrames.DataFrame(); pYTS = DataFrames.DataFrame()
     # Sequentially extract and merge
     for dbpath ∈ dbPaths
-        par_peer = processParameterSinglePeer(dbpath, sY, sTS)
+        par_peer = process_parameters_singlepeer(dbpath, sY, sTS)
         peername = par_peer.agentid.agentid
         agentid = vcat(agentid, par_peer.agentid)
         pSca = add_peername_and_merge(pSca, par_peer.pSca, peername)
@@ -84,11 +84,11 @@ function extractDBTable(db, tableName::String)
 end
 
 """
-    processParameterSinglePeer(dbpath::String, sY::Vector{Year}, sTS::Vector{Int})
+    process_parameters_singlepeer(dbpath::String, sY::Vector{Year}, sTS::Vector{Int})
 
 Extract and filter parameter tables from `dbpath` for individual peers
 """
-function processParameterSinglePeer(dbpath::String, sY::Vector{Year}, sTS::Vector{Int})
+function process_parameters_singlepeer(dbpath::String, sY::Vector{Year}, sTS::Vector{Int})
     db = SQLite.DB(dbpath)
     agentid = extractDBTable(db, "id")
     pSca = extractDBTable(db, "pSca")
