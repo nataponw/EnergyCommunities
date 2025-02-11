@@ -1,7 +1,7 @@
 """
     iterate_over_all_coalition(m)
 
-Given a model `m`, solve the problem over all possible coalition
+Given a model `m`, solve the problem over all possible coalitions and collect the costs
 """
 function iterate_over_all_coalition(m)
     # Prepare the list of coalition setup
@@ -58,34 +58,34 @@ function iterate_over_all_coalition(m)
 end
 
 """
-    calculate_chipin_coorperative(dc_idx_objvalue, dc_idx_costs, sPeer)
+    allocate_cost_contribution(dc_idx_objvalue, dc_idx_costs, sPeer)
 
-Given the output of `iterate_over_all_coalition`, calculate the chipin based on coorperative contributions
+Given the output of `iterate_over_all_coalition`, calculate the expected (final) total cost (`tc_final`) and corresponding internal payment (`chipin`) based on individual contributions
 """
-function calculate_contribution_chipin(dc_idx_objvalue, dc_idx_costs, sPeer)
+function allocate_cost_contribution(dc_idx_objvalue, dc_idx_costs, sPeer)
     # Calculate the contribution
     benefits = [dc_idx_objvalue[id] for id ∈ 0:(2^length(sPeer)-1)]
     benefits = first(benefits) .- benefits
     contribution = Dict(zip(sPeer, shapleyvalueanalysis(benefits)))
     # Calculate the ex post `chipin`
-    costs = DataFrames.DataFrame(
+    allocatedCost = DataFrames.DataFrame(
         peer = String[],
         tc_ext_nocoop = Float64[],
-        tc_ext_wicoop = Float64[],
+        tc_external = Float64[],
         contribution = Float64[]
     )
     idx_nocoop = 0; idx_wicoop = 2^length(sPeer)-1
     for p ∈ sPeer
-        tc_ext_nocoop = 0.; tc_ext_wicoop = 0.
+        tc_ext_nocoop = 0.; tc_external = 0.
         for costobj ∈ keys(dc_idx_costs[idx_nocoop])
             tc_ext_nocoop += sum(dc_idx_costs[idx_nocoop][costobj][p, :])
-            tc_ext_wicoop += sum(dc_idx_costs[idx_wicoop][costobj][p, :])
+            tc_external += sum(dc_idx_costs[idx_wicoop][costobj][p, :])
         end
-        push!(costs, (p.value, tc_ext_nocoop, tc_ext_wicoop, contribution[p]))
+        push!(allocatedCost, (p.value, tc_ext_nocoop, tc_external, contribution[p]))
     end
-    DataFrames.transform!(costs, [:tc_ext_nocoop, :contribution] => (-) => :tc_expected)
-    DataFrames.transform!(costs, [:tc_expected, :tc_ext_wicoop] => (-) => :chipin)
-    return costs
+    DataFrames.transform!(allocatedCost, [:tc_ext_nocoop, :contribution] => (-) => :tc_final)
+    DataFrames.transform!(allocatedCost, [:tc_final, :tc_external] => (-) => :chipin)
+    return allocatedCost
 end
 
 """
@@ -108,4 +108,41 @@ function shapleyvalueanalysis(benefits::Vector{Float64})
         end
     end
     return contribution
+end
+
+"""
+    allocate_cost_marginalprice(m::JuMP.Model)
+
+Given an optimized model `m`, process the cost allocation based on the marginal prices
+"""
+function allocate_cost_marginalprice(m::JuMP.Model)
+    # Extract market prices
+    price_mk_el = JuMP.dual.(m[:ecBalac_market_el])
+    price_mk_th = JuMP.dual.(m[:ecBalac_market_th])
+    # Extract cost components
+    allocatedCost = DataFrames.DataFrame(peer=String[], year=Int[], variable=String[], value=Float64[])
+    for p ∈ m[:sPeer], y ∈ m[:sY]
+        ## External costs
+        push!(allocatedCost, (p.value, y.value, "cXC_exttrade", JuMP.value.(m[:cXC_exttrade])[p, y]))
+        push!(allocatedCost, (p.value, y.value, "cXC_inttrade", JuMP.value.(m[:cXC_inttrade])[p, y]))
+        push!(allocatedCost, (p.value, y.value, "cCAPEX", JuMP.value.(m[:cCAPEX])[p, y]))
+        push!(allocatedCost, (p.value, y.value, "cDec_scap", JuMP.value.(m[:cDec_scap])[p, y]))
+        push!(allocatedCost, (p.value, y.value, "cElas", JuMP.value.(m[:cElas])[p, y]))
+        push!(allocatedCost, (p.value, y.value, "cFS", JuMP.value.(m[:cFS])[p, y]))
+        ## Internal energy trade, payment based on the marginal prices and fees
+        push!(allocatedCost, (p.value, y.value, "inttrade_el_mk", m[:dT] * (
+            + sum(price_mk_el[y, :] .* JuMP.value.(m[:vXCac_inttrade_elImp])[p, y, :])
+            - sum(price_mk_el[y, :] .* JuMP.value.(m[:vXCac_inttrade_elExp])[p, y, :])
+        )))
+        push!(allocatedCost, (p.value, y.value, "inttrade_th_mk", m[:dT] * (
+            + sum(price_mk_th[y, :] .* JuMP.value.(m[:vXCac_inttrade_thImp])[p, y, :])
+            - sum(price_mk_th[y, :] .* JuMP.value.(m[:vXCac_inttrade_thExp])[p, y, :])
+        )))
+    end
+    # Process into the fial structure
+    allocatedCost = DataFrames.combine(DataFrames.groupby(allocatedCost, [:peer, :variable]), :value => sum => :value)
+    allocatedCost = DataFrames.unstack(allocatedCost, :peer, :variable, :value)
+    DataFrames.select!(allocatedCost, :peer, [:cXC_exttrade, :cXC_inttrade, :cCAPEX, :cDec_scap, :cElas, :cFS] => (+) => :tc_external, :inttrade_el_mk, :inttrade_th_mk)
+    DataFrames.transform!(allocatedCost, :, [:tc_external, :inttrade_el_mk, :inttrade_th_mk] => (+) => :tc_final)
+    return allocatedCost
 end

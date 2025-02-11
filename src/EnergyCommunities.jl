@@ -17,7 +17,7 @@ export convert_modelobj2df
 # Export and import functions for solved problems
 export saveResults, loadResults
 # Analysis
-export iterate_over_all_coalition, calculate_contribution_chipin
+export iterate_over_all_coalition, allocate_cost_contribution, allocate_cost_marginalprice
 
 # Custom structs ==============================================================
 include(joinpath(@__DIR__, "SetStructs.jl"))

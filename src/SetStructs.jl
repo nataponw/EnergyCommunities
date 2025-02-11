@@ -1,5 +1,5 @@
 """
-Model-specific type: year
+Custom type: year
 """
 struct Year
     value::Int
@@ -14,7 +14,7 @@ Base.isless(a::Year, b) = Base.isless(a.value, b)
 Base.isless(a, b::Year) = Base.isless(a, b.value)
 
 """
-Model-specific type: peer
+Custom type: peer
 """
 struct Peer
     value::String
@@ -28,7 +28,7 @@ Base.isless(a::Peer, b) = Base.isless(a.value, b)
 Base.isless(a, b::Peer) = Base.isless(a, b.value)
 
 """
-Model-specific type: technology
+Custom type: technology
 """
 struct Tec
     value::String
