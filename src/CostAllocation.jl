@@ -49,6 +49,7 @@ function iterate_over_all_coalition(m)
             cXC_inttrade = JuMP.value.(m[:cXC_inttrade]),
             cXC_exttrade = JuMP.value.(m[:cXC_exttrade]),
             cCAPEX = JuMP.value.(m[:cCAPEX]),
+            cOPEX = JuMP.value.(m[:cOPEX]),
             cDec_scap = JuMP.value.(m[:cDec_scap]),
             cElas = JuMP.value.(m[:cElas]),
             cFS = JuMP.value.(m[:cFS]),
@@ -126,6 +127,7 @@ function allocate_cost_marginalprice(m::JuMP.Model)
         push!(allocatedCost, (p.value, y.value, "cXC_exttrade", JuMP.value.(m[:cXC_exttrade])[p, y]))
         push!(allocatedCost, (p.value, y.value, "cXC_inttrade", JuMP.value.(m[:cXC_inttrade])[p, y]))
         push!(allocatedCost, (p.value, y.value, "cCAPEX", JuMP.value.(m[:cCAPEX])[p, y]))
+        push!(allocatedCost, (p.value, y.value, "cOPEX", JuMP.value.(m[:cOPEX])[p, y]))
         push!(allocatedCost, (p.value, y.value, "cDec_scap", JuMP.value.(m[:cDec_scap])[p, y]))
         push!(allocatedCost, (p.value, y.value, "cElas", JuMP.value.(m[:cElas])[p, y]))
         push!(allocatedCost, (p.value, y.value, "cFS", JuMP.value.(m[:cFS])[p, y]))
@@ -142,7 +144,7 @@ function allocate_cost_marginalprice(m::JuMP.Model)
     # Process into the fial structure
     allocatedCost = DataFrames.combine(DataFrames.groupby(allocatedCost, [:peer, :variable]), :value => sum => :value)
     allocatedCost = DataFrames.unstack(allocatedCost, :peer, :variable, :value)
-    DataFrames.select!(allocatedCost, :peer, [:cXC_exttrade, :cXC_inttrade, :cCAPEX, :cDec_scap, :cElas, :cFS] => (+) => :tc_external, :inttrade_el_mk, :inttrade_th_mk)
+    DataFrames.select!(allocatedCost, :peer, [:cXC_exttrade, :cXC_inttrade, :cCAPEX, :cOPEX, :cDec_scap, :cElas, :cFS] => (+) => :tc_external, :inttrade_el_mk, :inttrade_th_mk)
     DataFrames.transform!(allocatedCost, :, [:tc_external, :inttrade_el_mk, :inttrade_th_mk] => (+) => :tc_final)
     return allocatedCost
 end

@@ -154,10 +154,10 @@ function initializeModel(
     DataFrames.transform!(pTec, [:ncap_loaninterest, :ncap_loanduration] => (
         (r, n) -> r ./ (1 .- (1 .+ r).^(-n))
     ) => :ncap_annuityrate)
-    # Essential constants and sets permanently mapped to the model ----------------
+    # Attach essential constants and sets
     m[:dT] = dT
     m[:sPeer] = sPeer; m[:sY] = sY; m[:sTS] = sTS; m[:sTec] = sTec
-    # To-do: attach all parameters to the model
+    # Attach essential parameters
     m[:dem_el_hh] = DenseAxisArray(reshape(pYTS.dem_el_hh, nPeer, nY, nTS), sPeer, sY, sTS)
     m[:dem_el_ev] = DenseAxisArray(reshape(pYTS.dem_el_ev, nPeer, nY, nTS), sPeer, sY, sTS)
     m[:dem_th_hh] = DenseAxisArray(reshape(pYTS.dem_th_hh, nPeer, nY, nTS), sPeer, sY, sTS)
@@ -525,6 +525,29 @@ function initializeModel(
             ) for iTec ∈ sTec
         ) * (nTS/timesteps_in_year) # Reduce annual lump sum costs by the considered time horizon
     )
+    par_cost_var = DenseAxisArray(reshape(pTec.cost_var, nPeer, nTec), sPeer, sTec)
+    par_cost_fix = DenseAxisArray(reshape(pTec.cost_fix, nPeer, nTec), sPeer, sTec)
+    JuMP.@expression(m, cOPEX[iPeer ∈ sPeer, iY ∈ sY],
+        # Fixed operation costs
+        + sum(
+            (
+                + vCap[iPeer, iY, iTec] * par_cost_fix[iPeer, iTec]
+            ) for iTec ∈ sTec
+        ) * (nTS/timesteps_in_year) # Reduce annual lump sum costs by the considered time horizon
+        # Variable operation costs without fuel costs
+        + dT * (
+                + par_cost_var[iPeer, Tec("pv")] * sum(vOpt_pv_gen[iPeer, iY, :])
+                + par_cost_var[iPeer, Tec("wt")] * sum(vOpt_wt_gen[iPeer, iY, :])
+                + par_cost_var[iPeer, Tec("es")] * sum(vOpt_es_dch[iPeer, iY, :])
+                + par_cost_var[iPeer, Tec("gb")] * sum(vOpt_gb_gen[iPeer, iY, :])
+                + par_cost_var[iPeer, Tec("hb")] * sum(vOpt_hb_gen[iPeer, iY, :])
+                + par_cost_var[iPeer, Tec("hp")] * sum(vOpt_hp_gen[iPeer, iY, :])
+                + par_cost_var[iPeer, Tec("dh")] * sum(vXCph_peer_thImp[iPeer, iY, :])
+                + par_cost_var[iPeer, Tec("ts")] * sum(vOpt_ts_dch[iPeer, iY, :])
+                + par_cost_var[iPeer, Tec("chpng")] * sum(vOpt_chpng_gen_el[iPeer, iY, :])
+                + par_cost_var[iPeer, Tec("chph2")] * sum(vOpt_chph2_gen_el[iPeer, iY, :])
+        )
+    )
     JuMP.@expression(m, cFS[iPeer ∈ sPeer, iY ∈ sY],
         + dT * bigM * sum(vFS_sink_el[iPeer, iY, :])
         + dT * bigM * sum(vFS_source_el[iPeer, iY, :])
@@ -587,6 +610,7 @@ function initializeModel(
         + sum(cXC_comm)
         + sum(cXC_inttrade) + sum(cXC_exttrade)
         + sum(cCAPEX)
+        + sum(cOPEX)
         + sum(cDec_scap)
         + sum(cElas)
         + sum(cFS)
