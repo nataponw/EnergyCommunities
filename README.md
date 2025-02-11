@@ -1,4 +1,4 @@
-# EnergyCommunities
+# Energy Communities 
 
 This package presents an operation and investment optimization model for energy communities with the options for local energy (electricity and heat) trading.
 The core model is documented in the paper [Link](www.google.com).
@@ -24,14 +24,3 @@ A database is dedicated for an individual participant. A blank database can be c
 <img align="right" width="180" height="180" src="images/Logo_BMWK.png">
 
 This work was conducted in the research project BKM 2.0, which was sponsored by the Federal Ministry for Economic Affairs and Climate Action of Germany (*Bundesministerium für Wirtschaft und Klimaschutz* BMWK) under the grant 03EI4015A.
-
-## Licence
-
-Copyright (C) 2025 Fraunhofer ISE
-<img align="right" width="160" height="50" src="images/Logo_FhgISE.png">
-
-This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with this program. If not, see https://www.gnu.org/licenses/.
