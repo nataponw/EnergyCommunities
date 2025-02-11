@@ -88,7 +88,14 @@ function calculate_contribution_chipin(dc_idx_objvalue, dc_idx_costs, sPeer)
     return costs
 end
 
-function shapleyvalueanalysis(benefits)
+"""
+    shapleyvalueanalysis(benefits::Vector{Float64})
+
+Given `benefits`, the list of benefits from cooperation, calculate individual contribution.
+
+The location indicates the coalition setup, see `calculate_contribution_chipin`. The first element is with an empty coalition, and the last element is with the grand coalition.
+"""
+function shapleyvalueanalysis(benefits::Vector{Float64})
     nP = Int(log2(length(benefits)))
     map_idx_participation = [digits(Bool, idx, base=2, pad=nP) for idx ∈ 0:(length(benefits)-1)]
     converter = [2^i for i ∈ 0:(nP-1)]

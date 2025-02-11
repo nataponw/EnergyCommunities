@@ -117,19 +117,19 @@ Build an optimization problem
 - `dT` : Time interval
 
 # Keyword Arguments
-- `bOneoff`
-- `bFuelswitch`
-- `bConElas`
-- `bNoExpand`
-- `bCHPCurtail`
-- `bIntTrade`
-- `sExcludedPeer`
+- `bOneoff`: for each peer, each technology can be installed once over the investigated years.
+- `bFuelswitch`: the community can either import natural gas or hydrogen, but not both.
+- `bConElas`: activate the elastic thermal demand module. Note that in doing so, the model becomes (MI)QP.
+- `bNoExpand`: deactivate the expansion and decommission modules, i.e., only the starting capacities are considered.
+- `bCHPThCurtail`: allow the curtailment of CHPs' thermal generation
+- `bIntTrade`: activate the internal trading module, otherwise, the community is considered as a single entity.
+- `sExcludedPeer`: List of peers excluded from the internal trading
 - `solverbackend`: if a solver is provided, the model is created via `JuMP.direct_model` instead of `JuMP.Model`
 """
 function initializeModel(
     sPeer, sY, sTS, sTec, pSca, pY, pTec, pYTec, pYTS, dT;
     bOneoff::Bool=false, bFuelswitch::Bool=false, bConElas::Bool=false, bNoExpand::Bool=false,
-    bCHPCurtail::Bool=false, bIntTrade::Bool=false, sExcludedPeer=Peer[],
+    bCHPThCurtail::Bool=false, bIntTrade::Bool=false, sExcludedPeer=Peer[],
     solverbackend=missing,
     )
     # Sorting indexes and parameters
@@ -322,7 +322,7 @@ function initializeModel(
     JuMP.@constraint(m, ecCon_chpng,
         vOpt_chpng_gen_el .== vCon_chpng_ng .* repeat(filter(:tec => ==("chpng"), pTec).eff_el, inner=(1, nY, nTS))
     )
-    if bCHPCurtail
+    if bCHPThCurtail
         JuMP.@constraint(m, ecOpt_chpng,
             vOpt_chpng_gen_th ./ repeat(filter(:tec => ==("chpng"), pTec).eff_th, inner=(1, nY, nTS))
             .≤
@@ -342,7 +342,7 @@ function initializeModel(
     JuMP.@constraint(m, ecCon_chph2,
         vOpt_chph2_gen_el .== vCon_chph2_h2 .* repeat(filter(:tec => ==("chph2"), pTec).eff_el, inner=(1, nY, nTS))
     )
-    if bCHPCurtail
+    if bCHPThCurtail
         JuMP.@constraint(m, ecOpt_chph2,
             vOpt_chph2_gen_th ./ repeat(filter(:tec => ==("chph2"), pTec).eff_th, inner=(1, nY, nTS))
             .≤
