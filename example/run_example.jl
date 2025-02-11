@@ -60,3 +60,6 @@ allocatedCost_cooperative = allocate_cost_contribution(dc_idx_objvalue, dc_idx_c
 allocatedCost_competitive = allocate_cost_marginalprice(model_EL)
 @show allocatedCost_competitive
 
+# Unload the solved model instance into HDF4 file =============================
+saveResults(model_SQ, "results_SQ.h5")
+saveResults(model_EL, "results_EL.h5")
